@@ -7,6 +7,7 @@
 
 import os, re
 import yaml
+import hashlib
 from yacs.config import CfgNode as CN
 
 _C = CN()
@@ -355,6 +356,11 @@ def _update_config_from_file(config, cfg_file):
     config.merge_from_file(cfg_file)
     config.freeze()
 
+def hash_file_name(name):
+    dataset = name.split("_")[0]
+    rest = name[len(dataset)+1:]
+    hash = hashlib.md5(bytes(rest, "utf-8"))
+    return f"{dataset}_{hash.hexdigest()}"
 
 def update_config(config, args):
 
@@ -386,6 +392,7 @@ def update_config(config, args):
                                         "det_len{0}".format(config.TRAIN.DATA.PREPROCESS.CROP_FACE.DETECTION.DYNAMIC_DETECTION_FREQUENCY),
                                         "Median_face_box{0}".format(config.TRAIN.DATA.PREPROCESS.CROP_FACE.DETECTION.USE_MEDIAN_FACE_BOX)
                                               ])
+        config.TRAIN.DATA.EXP_DATA_NAME = hash_file_name(config.TRAIN.DATA.EXP_DATA_NAME)
     config.TRAIN.DATA.CACHED_PATH = os.path.join(config.TRAIN.DATA.CACHED_PATH, config.TRAIN.DATA.EXP_DATA_NAME)
 
     name, ext = os.path.splitext(config.TRAIN.DATA.FILE_LIST_PATH)
@@ -422,6 +429,7 @@ def update_config(config, args):
                                           "det_len{0}".format(config.VALID.DATA.PREPROCESS.CROP_FACE.DETECTION.DYNAMIC_DETECTION_FREQUENCY),
                                           "Median_face_box{0}".format(config.VALID.DATA.PREPROCESS.CROP_FACE.DETECTION.USE_MEDIAN_FACE_BOX)
                                                 ])
+            config.VALID.DATA.EXP_DATA_NAME = hash_file_name(config.VALID.DATA.EXP_DATA_NAME)
         config.VALID.DATA.CACHED_PATH = os.path.join(config.VALID.DATA.CACHED_PATH, config.VALID.DATA.EXP_DATA_NAME)
 
         name, ext = os.path.splitext(config.VALID.DATA.FILE_LIST_PATH)
@@ -459,6 +467,7 @@ def update_config(config, args):
                                         "det_len{0}".format(config.TEST.DATA.PREPROCESS.CROP_FACE.DETECTION.DYNAMIC_DETECTION_FREQUENCY),
                                         "Median_face_box{0}".format(config.TEST.DATA.PREPROCESS.CROP_FACE.DETECTION.USE_MEDIAN_FACE_BOX)
                                               ])
+        config.TEST.DATA.EXP_DATA_NAME = hash_file_name(config.TEST.DATA.EXP_DATA_NAME)
     config.TEST.DATA.CACHED_PATH = os.path.join(config.TEST.DATA.CACHED_PATH, config.TEST.DATA.EXP_DATA_NAME)
 
     name, ext = os.path.splitext(config.TEST.DATA.FILE_LIST_PATH)
@@ -529,6 +538,7 @@ def update_config(config, args):
                                         "Median_face_box{0}".format(config.UNSUPERVISED.DATA.PREPROCESS.CROP_FACE.DETECTION.USE_MEDIAN_FACE_BOX),
                                         "unsupervised"
                                               ])
+        config.UNSUPERVISED.DATA.EXP_DATA_NAME = hash_file_name(config.UNSUPERVISED.DATA.EXP_DATA_NAME)
     config.UNSUPERVISED.DATA.CACHED_PATH = os.path.join(config.UNSUPERVISED.DATA.CACHED_PATH, config.UNSUPERVISED.DATA.EXP_DATA_NAME)
 
     name, ext = os.path.splitext(config.UNSUPERVISED.DATA.FILE_LIST_PATH)

@@ -60,31 +60,45 @@ class COHFACELoader(BaseLoader):
                 dirs.append({"index": int('{0}0{1}'.format(subject, i)),
                              "path": os.path.join(data_dir, str(i))})
         return dirs
+    
+    # TODO: Could be improved for COHFACE
+    def split_raw_data(self, data_dirs, begin, end):
+        """Returns a subset of data dirs, split with begin and end values."""
+        if begin == 0 and end == 1:  # return the full directory if begin == 0 and end == 1
+            return data_dirs
 
-    def preprocess_dataset(self, data_dirs, config_preprocess):
+        file_num = len(data_dirs)
+        choose_range = range(int(begin * file_num), int(end * file_num))
+        data_dirs_new = []
+
+        for i in choose_range:
+            data_dirs_new.append(data_dirs[i])
+
+        return data_dirs_new
+
+    def preprocess_dataset_subprocess(self, data_dirs, config_preprocess, i, file_list_dict):
         """Preprocesses the raw data."""
 
         # Read Video Frames
-        file_num = len(data_dirs)
-        for i in range(file_num):
-            frames = self.read_video(
-                os.path.join(
-                    data_dirs[i]["path"],
-                    "data.avi"))
+        frames = self.read_video(
+            os.path.join(
+                data_dirs[i]["path"],
+                "data.avi"))
 
-            # Read Labels
-            if config_preprocess.USE_PSUEDO_PPG_LABEL:
-                bvps = self.generate_pos_psuedo_labels(frames, fs=self.config_data.FS)
-            else:
-                bvps = self.read_wave(
-                        os.path.join(
-                        data_dirs[i]["path"],
-                        "data.hdf5"))
+        # Read Labels
+        if config_preprocess.USE_PSUEDO_PPG_LABEL:
+            bvps = self.generate_pos_psuedo_labels(frames, fs=self.config_data.FS)
+        else:
+            bvps = self.read_wave(
+                    os.path.join(
+                    data_dirs[i]["path"],
+                    "data.hdf5"))
             
-            target_length = frames.shape[0]
-            bvps = BaseLoader.resample_ppg(bvps, target_length)
-            frames_clips, bvps_clips = self.preprocess(frames, bvps, config_preprocess)
-            self.preprocessed_data_len += self.save(frames_clips, bvps_clips, data_dirs[i]["index"])
+        target_length = frames.shape[0]
+        bvps = BaseLoader.resample_ppg(bvps, target_length)
+        frames_clips, bvps_clips = self.preprocess(frames, bvps, config_preprocess)
+        input_name_list, label_name_list = self.save_multi_process(frames_clips, bvps_clips, data_dirs[i]["index"])
+        file_list_dict[i] = input_name_list
 
     @staticmethod
     def read_video(video_file):

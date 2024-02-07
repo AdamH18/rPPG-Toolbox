@@ -238,7 +238,7 @@ class BaseLoader(Dataset):
         for data_type in config_preprocess.DATA_TYPE:
             f_c = frames.copy()
             if data_type == "Raw":
-                data.append(f_c)
+                data.append(f_c.astype(np.uint8))
             elif data_type == "DiffNormalized":
                 data.append(BaseLoader.diff_normalize_data(f_c))
             elif data_type == "Standardized":
@@ -466,7 +466,7 @@ class BaseLoader(Dataset):
             count += 1
         return input_path_name_list, label_path_name_list
 
-    def multi_process_manager(self, data_dirs, config_preprocess, multi_process_quota=8):
+    def multi_process_manager(self, data_dirs, config_preprocess, multi_process_quota=4):
         """Allocate dataset preprocessing across multiple processes.
 
         Args:
