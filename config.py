@@ -50,10 +50,12 @@ _C.TRAIN.DATA.FILTERING.SELECT_TASKS = False
 _C.TRAIN.DATA.FILTERING.TASK_LIST = ['']
 _C.TRAIN.DATA.FS = 0
 _C.TRAIN.DATA.DATA_PATH = ''
+_C.TRAIN.DATA.MULTI_PATH = ['']
 _C.TRAIN.DATA.EXP_DATA_NAME = ''
 _C.TRAIN.DATA.CACHED_PATH = 'PreprocessedData'
 _C.TRAIN.DATA.FILE_LIST_PATH = os.path.join(_C.TRAIN.DATA.CACHED_PATH, 'DataFileLists')
 _C.TRAIN.DATA.DATASET = ''
+_C.TRAIN.DATA.MULTI_DATASET = ['']
 _C.TRAIN.DATA.DO_PREPROCESS = False
 _C.TRAIN.DATA.DATA_FORMAT = 'NDCHW'
 _C.TRAIN.DATA.BEGIN = 0.0
@@ -566,6 +568,8 @@ def update_config(config, args):
         config.TEST.OUTPUT_SAVE_DIR = os.path.join(config.LOG.PATH, config.TEST.DATA.EXP_DATA_NAME, 'saved_test_outputs')
     elif config.TOOLBOX_MODE == 'unsupervised_method':
         config.UNSUPERVISED.OUTPUT_SAVE_DIR = os.path.join(config.LOG.PATH, config.UNSUPERVISED.DATA.EXP_DATA_NAME, 'saved_outputs')
+    elif config.TOOLBOX_MODE == 'preprocess':
+        pass
     else:
         raise ValueError('TOOLBOX_MODE only supports train_and_test, only_test, or unsupervised_method!')
 

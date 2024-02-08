@@ -9,3 +9,4 @@ import dataset.data_loader.BP4DPlusLoader
 import dataset.data_loader.BP4DPlusBigSmallLoader
 import dataset.data_loader.UBFCPHYSLoader
 import dataset.data_loader.VicarPPG2Loader
+import dataset.data_loader.MultiLoader

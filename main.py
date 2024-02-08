@@ -134,7 +134,7 @@ if __name__ == "__main__":
     print(config, end='\n\n')
 
     data_loader_dict = dict() # dictionary of data loaders 
-    if config.TOOLBOX_MODE == "train_and_test":
+    if config.TOOLBOX_MODE == "train_and_test" or config.TOOLBOX_MODE == "preprocess":
         # train_loader
         if config.TRAIN.DATA.DATASET == "UBFC-rPPG":
             train_loader = data_loader.UBFCrPPGLoader.UBFCrPPGLoader
@@ -156,18 +156,27 @@ if __name__ == "__main__":
             train_loader = data_loader.COHFACELoader.COHFACELoader
         elif config.TRAIN.DATA.DATASET == "VICARPPG2":
             train_loader = data_loader.VicarPPG2Loader.VicarPPG2Loader
+        elif config.TRAIN.DATA.DATASET == "MultiDataset":
+            train_loader = data_loader.MultiLoader.MultiLoader
         else:
             raise ValueError("Unsupported dataset! Currently supporting UBFC-rPPG, PURE, MMPD, \
                              SCAMPS, BP4D+ (Normal and BigSmall preprocessing), and UBFC-PHYS.")
 
         # Create and initialize the train dataloader given the correct toolbox mode,
         # a supported dataset name, and a valid dataset paths
-        if (config.TRAIN.DATA.DATASET and config.TRAIN.DATA.DATA_PATH):
-
-            train_data_loader = train_loader(
-                name="train",
-                data_path=config.TRAIN.DATA.DATA_PATH,
-                config_data=config.TRAIN.DATA)
+        if (config.TRAIN.DATA.DATASET and (config.TRAIN.DATA.DATA_PATH or config.TRAIN.DATA.MULTI_PATH)):
+            if train_loader == data_loader.MultiLoader.MultiLoader:
+                train_data_loader = train_loader(
+                    name="train",
+                    dataset_names=config.TRAIN.DATA.MULTI_DATASET,
+                    raw_data_paths=config.TRAIN.DATA.MULTI_PATH,
+                    config_data=config.TRAIN.DATA
+                )
+            else:
+                train_data_loader = train_loader(
+                    name="train",
+                    data_path=config.TRAIN.DATA.DATA_PATH,
+                    config_data=config.TRAIN.DATA)
             data_loader_dict['train'] = DataLoader(
                 dataset=train_data_loader,
                 num_workers=16,
@@ -178,6 +187,9 @@ if __name__ == "__main__":
             )
         else:
             data_loader_dict['train'] = None
+
+        if config.TOOLBOX_MODE == "preprocess":
+            exit()
 
         # valid_loader
         if config.VALID.DATA.DATASET == "UBFC-rPPG":
@@ -200,6 +212,8 @@ if __name__ == "__main__":
             valid_loader = data_loader.COHFACELoader.COHFACELoader
         elif config.VALID.DATA.DATASET == "VICARPPG2":
             valid_loader = data_loader.VicarPPG2Loader.VicarPPG2Loader
+        elif config.VALID.DATA.DATASET == "MultiDataset":
+            valid_loader = data_loader.MultiLoader.MultiLoader
         elif config.VALID.DATA.DATASET is None and not config.TEST.USE_LAST_EPOCH:
             raise ValueError("Validation dataset not specified despite USE_LAST_EPOCH set to False!")
         else:
@@ -208,11 +222,19 @@ if __name__ == "__main__":
         
         # Create and initialize the valid dataloader given the correct toolbox mode,
         # a supported dataset name, and a valid dataset path
-        if (config.VALID.DATA.DATASET and config.VALID.DATA.DATA_PATH and not config.TEST.USE_LAST_EPOCH):
-            valid_data = valid_loader(
-                name="valid",
-                data_path=config.VALID.DATA.DATA_PATH,
-                config_data=config.VALID.DATA)
+        if (config.VALID.DATA.DATASET and (config.VALID.DATA.DATA_PATH or config.VALID.DATA.MULTI_PATH) and not config.TEST.USE_LAST_EPOCH):
+            if valid_loader == data_loader.MultiLoader.MultiLoader:
+                valid_data_loader = valid_loader(
+                    name="valid",
+                    dataset_names=config.VALID.DATA.MULTI_DATASET,
+                    raw_data_paths=config.VALID.DATA.MULTI_PATH,
+                    config_data=config.VALID.DATA
+                )
+            else:
+                valid_data = valid_loader(
+                    name="valid",
+                    data_path=config.VALID.DATA.DATA_PATH,
+                    config_data=config.VALID.DATA)
             data_loader_dict["valid"] = DataLoader(
                 dataset=valid_data,
                 num_workers=16,
@@ -246,6 +268,8 @@ if __name__ == "__main__":
             test_loader = data_loader.COHFACELoader.COHFACELoader
         elif config.TEST.DATA.DATASET == "VICARPPG2":
             test_loader = data_loader.VicarPPG2Loader.VicarPPG2Loader
+        elif config.TEST.DATA.DATASET == "MultiDataset":
+            test_loader = data_loader.MultiLoader.MultiLoader
         else:
             raise ValueError("Unsupported dataset! Currently supporting UBFC-rPPG, PURE, MMPD, \
                              SCAMPS, BP4D+ (Normal and BigSmall preprocessing), and UBFC-PHYS.")
@@ -255,11 +279,19 @@ if __name__ == "__main__":
 
         # Create and initialize the test dataloader given the correct toolbox mode,
         # a supported dataset name, and a valid dataset path
-        if config.TEST.DATA.DATASET and config.TEST.DATA.DATA_PATH:
-            test_data = test_loader(
-                name="test",
-                data_path=config.TEST.DATA.DATA_PATH,
-                config_data=config.TEST.DATA)
+        if config.TEST.DATA.DATASET and (config.TEST.DATA.DATA_PATH or config.TEST.DATA.MULTI_PATH):
+            if test_loader == data_loader.MultiLoader.MultiLoader:
+                test_data_loader = test_loader(
+                    name="test",
+                    dataset_names=config.TEST.DATA.MULTI_DATASET,
+                    raw_data_paths=config.TEST.DATA.MULTI_PATH,
+                    config_data=config.TEST.DATA
+                )
+            else:
+                test_data = test_loader(
+                    name="test",
+                    data_path=config.TEST.DATA.DATA_PATH,
+                    config_data=config.TEST.DATA)
             data_loader_dict["test"] = DataLoader(
                 dataset=test_data,
                 num_workers=16,
@@ -291,14 +323,24 @@ if __name__ == "__main__":
             unsupervised_loader = data_loader.COHFACELoader.COHFACELoader
         elif config.UNSUPERVISED.DATA.DATASET == "VICARPPG2":
             unsupervised_loader = data_loader.VicarPPG2Loader.VicarPPG2Loader
+        elif config.UNSUPERVISED.DATA.DATASET == "MultiDataset":
+            unsupervised_loader = data_loader.MultiLoader.MultiLoader
         else:
             raise ValueError("Unsupported dataset! Currently supporting UBFC-rPPG, PURE, MMPD, \
                              SCAMPS, BP4D+, and UBFC-PHYS.")
         
-        unsupervised_data = unsupervised_loader(
-            name="unsupervised",
-            data_path=config.UNSUPERVISED.DATA.DATA_PATH,
-            config_data=config.UNSUPERVISED.DATA)
+        if unsupervised_loader == data_loader.MultiLoader.MultiLoader:
+            unsupervised_data_loader = unsupervised_loader(
+                    name="unsupervised",
+                    dataset_names=config.UNSUPERVISED.DATA.MULTI_DATASET,
+                    raw_data_paths=config.UNSUPERVISED.DATA.MULTI_PATH,
+                    config_data=config.UNSUPERVISED.DATA
+                )
+        else:
+            unsupervised_data = unsupervised_loader(
+                name="unsupervised",
+                data_path=config.UNSUPERVISED.DATA.DATA_PATH,
+                config_data=config.UNSUPERVISED.DATA)
         data_loader_dict["unsupervised"] = DataLoader(
             dataset=unsupervised_data,
             num_workers=16,
