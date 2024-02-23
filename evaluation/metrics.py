@@ -4,6 +4,8 @@ import torch
 from evaluation.post_process import *
 from tqdm import tqdm
 from evaluation.BlandAltmanPy import BlandAltman
+from scipy.spatial.distance import euclidean
+from fastdtw import fastdtw
 
 def read_label(dataset):
     """Read manually corrected labels."""
@@ -41,6 +43,7 @@ def _reform_data_from_dict(data, flatten=True):
 
     return sort_data
 
+DIFF_ON_SEC = ["DeepPhys"]
 
 def calculate_metrics(predictions, labels, config):
     """Calculate rPPG Metrics (MAE, RMSE, MAPE, Pearson Coef.)."""
@@ -49,6 +52,7 @@ def calculate_metrics(predictions, labels, config):
     predict_hr_peak_all = list()
     gt_hr_peak_all = list()
     SNR_all = list()
+    dtws = list()
     print("Calculating metrics!")
     for index in tqdm(predictions.keys(), ncols=80):
         prediction = _reform_data_from_dict(predictions[index])
@@ -73,7 +77,7 @@ def calculate_metrics(predictions, labels, config):
             if config.TEST.DATA.PREPROCESS.LABEL_TYPE == "Standardized" or \
                     config.TEST.DATA.PREPROCESS.LABEL_TYPE == "Raw":
                 diff_flag_test = False
-            elif config.TEST.DATA.PREPROCESS.LABEL_TYPE == "DiffNormalized":
+            elif config.TEST.DATA.PREPROCESS.LABEL_TYPE == "DiffNormalized" or (config.MODEL.SECONDARY_PREPROCESS and config.MODEL.NAME in DIFF_ON_SEC):
                 diff_flag_test = True
             else:
                 raise ValueError("Unsupported label type in testing!")
@@ -92,6 +96,20 @@ def calculate_metrics(predictions, labels, config):
                 SNR_all.append(SNR)
             else:
                 raise ValueError("Inference evaluation method name wrong!")
+            
+            if "DTW" in config.TEST.METRICS:
+                if diff_flag_test:  # if the predictions and labels are 1st derivative of PPG signal.
+                    pred_window = detrend(np.cumsum(pred_window), 100)
+                    label_window = detrend(np.cumsum(label_window), 100)
+                else:
+                    pred_window = detrend(pred_window, 100)
+                    label_window = detrend(label_window, 100)
+                pred_window = np.array(pred_window)
+                label_window = np.array(label_window)
+                standardized_pred = (pred_window - np.mean(pred_window)) / np.std(pred_window)
+                standardized_label = (label_window - np.mean(label_window)) / np.std(label_window)
+                dist, _ = fastdtw(standardized_label, standardized_pred, dist=euclidean)
+                dtws.append(dist / window_frame_size)
     
     # Filename ID to be used in any results files (e.g., Bland-Altman plots) that get saved
     if config.TOOLBOX_MODE == 'train_and_test':
@@ -106,6 +124,7 @@ def calculate_metrics(predictions, labels, config):
         gt_hr_fft_all = np.array(gt_hr_fft_all)
         predict_hr_fft_all = np.array(predict_hr_fft_all)
         SNR_all = np.array(SNR_all)
+        dtws = np.array(dtws)
         num_test_samples = len(predict_hr_fft_all)
         for metric in config.TEST.METRICS:
             if metric == "MAE":
@@ -129,6 +148,10 @@ def calculate_metrics(predictions, labels, config):
                 SNR_FFT = np.mean(SNR_all)
                 standard_error = np.std(SNR_all) / np.sqrt(num_test_samples)
                 print("FFT SNR (FFT Label): {0} +/- {1} (dB)".format(SNR_FFT, standard_error))
+            elif metric == "DTW":
+                DTW = np.mean(dtws)
+                standard_error = np.std(dtws) / np.sqrt(num_test_samples)
+                print("DTW (Signal Distance): {0} +/- {1}".format(DTW, standard_error))
             elif "AU" in metric:
                 pass
             elif "BA" in metric:  
@@ -174,6 +197,10 @@ def calculate_metrics(predictions, labels, config):
                 SNR_PEAK = np.mean(SNR_all)
                 standard_error = np.std(SNR_all) / np.sqrt(num_test_samples)
                 print("FFT SNR (FFT Label): {0} +/- {1} (dB)".format(SNR_PEAK, standard_error))
+            elif metric == "DTW":
+                DTW = np.mean(dtws)
+                standard_error = np.std(dtws) / np.sqrt(num_test_samples)
+                print("DTW (Signal Distance): {0} +/- {1} (dB)".format(DTW, standard_error))
             elif "AU" in metric:
                 pass
             elif "BA" in metric:

@@ -287,6 +287,8 @@ _C.MODEL.RESUME = ''
 _C.MODEL.DROP_RATE = 0.0
 _C.MODEL.MODEL_DIR = 'PreTrainedModels'
 
+_C.MODEL.SECONDARY_PREPROCESS = False
+
 # Specific parameters for physnet parameters
 _C.MODEL.PHYSNET = CN()
 _C.MODEL.PHYSNET.FRAME_NUM = 64
@@ -537,8 +539,7 @@ def update_config(config, args):
                                       "Large_size{0}".format(config.UNSUPERVISED.DATA.PREPROCESS.CROP_FACE.LARGE_BOX_COEF),
                                       "Dyamic_Det{0}".format(config.UNSUPERVISED.DATA.PREPROCESS.CROP_FACE.DETECTION.DO_DYNAMIC_DETECTION),
                                         "det_len{0}".format(config.UNSUPERVISED.DATA.PREPROCESS.CROP_FACE.DETECTION.DYNAMIC_DETECTION_FREQUENCY),
-                                        "Median_face_box{0}".format(config.UNSUPERVISED.DATA.PREPROCESS.CROP_FACE.DETECTION.USE_MEDIAN_FACE_BOX),
-                                        "unsupervised"
+                                        "Median_face_box{0}".format(config.UNSUPERVISED.DATA.PREPROCESS.CROP_FACE.DETECTION.USE_MEDIAN_FACE_BOX)
                                               ])
         config.UNSUPERVISED.DATA.EXP_DATA_NAME = hash_file_name(config.UNSUPERVISED.DATA.EXP_DATA_NAME)
     config.UNSUPERVISED.DATA.CACHED_PATH = os.path.join(config.UNSUPERVISED.DATA.CACHED_PATH, config.UNSUPERVISED.DATA.EXP_DATA_NAME)

@@ -4,7 +4,7 @@ import scipy.io
 from scipy.signal import butter
 from sklearn.metrics import f1_score, precision_recall_fscore_support
 from evaluation.metrics import calculate_metrics, _reform_data_from_dict
-from evaluation.post_process import _detrend, _next_power_of_2, _calculate_SNR
+from evaluation.post_process import detrend, _next_power_of_2, _calculate_SNR
 from tqdm import tqdm
 from evaluation.BlandAltmanPy import BlandAltman
 
@@ -42,11 +42,11 @@ def _calculate_peak_rr(resp_signal, fs):
 def calculate_resp_metrics_per_video(predictions, labels, fs=30, diff_flag=True, use_bandpass=True, rr_method='FFT'):
     """Calculate video-level RR"""
     if diff_flag:  # if the predictions and labels are 1st derivative of Resp signal.
-        predictions = _detrend(np.cumsum(predictions), 100)
-        labels = _detrend(np.cumsum(labels), 100)
+        predictions = detrend(np.cumsum(predictions), 100)
+        labels = detrend(np.cumsum(labels), 100)
     else:
-        predictions = _detrend(predictions, 100)
-        labels = _detrend(labels, 100)
+        predictions = detrend(predictions, 100)
+        labels = detrend(labels, 100)
     if use_bandpass:
         # bandpass filter between [0.13, 0.5] Hz
         # equals [8, 30] breaths per min

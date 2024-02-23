@@ -6,7 +6,7 @@ import copy
 import os
 
 class MultiLoader(Dataset):
-    def __init__(self, name, dataset_names, raw_data_paths, config_data):
+    def __init__(self, name, dataset_names, raw_data_paths, config_data, sec_pre, model):
         self.name = name
         self.loaders = list()
         if len(dataset_names) != len(raw_data_paths):
@@ -54,7 +54,9 @@ class MultiLoader(Dataset):
             # Create loader for dataset with modified config
             self.loaders.append(train_loaders[i](name=f"train-{dataset_names[i]}",
                                 data_path=raw_data_paths[i],
-                                config_data=ds_config))
+                                config_data=ds_config,
+                                sec_pre=sec_pre,
+                                model=model))
         
         # Calculate loader length in advance
         self.len = sum([len(l) for l in self.loaders])

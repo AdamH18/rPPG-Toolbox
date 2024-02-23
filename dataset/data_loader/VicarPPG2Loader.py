@@ -14,7 +14,7 @@ class VicarPPG2Loader(BaseLoader):
     """The data loader for the VicarPPG-2 dataset."""
     BULK_FRAME_WORK = 300
 
-    def __init__(self, name, data_path, config_data):
+    def __init__(self, name, data_path, config_data, sec_pre, model):
         """Initializes a VicarPPG-2 dataloader.
             Args:
                 data_path(str): path of a folder which stores raw video and bvp data.
@@ -35,7 +35,7 @@ class VicarPPG2Loader(BaseLoader):
                 name(str): name of the dataloader.
                 config_data(CfgNode): data settings(ref:config.py).
         """
-        super().__init__(name, data_path, config_data)
+        super().__init__(name, data_path, config_data, sec_pre, model)
 
     def get_raw_data(self, data_path):
         """Returns data directories under the path."""

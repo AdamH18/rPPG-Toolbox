@@ -9,6 +9,7 @@ import numpy as np
 import torch.nn.functional as F
 import pdb
 import torch.nn as nn
+import scipy
 
 def normal_sampling(mean, label_k, std):
     return math.exp(-(label_k-mean)**2/(2*std**2))/(math.sqrt(2*math.pi)*std)
@@ -118,3 +119,18 @@ class TorchLossComputer(object):
         whole_max_idx = whole_max_idx.type(torch.float)
         return loss_distribution_kl, F.cross_entropy(ca, (target-bpm_range[0]).view(1).type(torch.long)),  torch.abs(target[0]-bpm_range[0]-whole_max_idx)
         
+    @staticmethod
+    def attention_loss(ss, labels, device):
+        label_peaks, _ = scipy.signal.find_peaks(labels)
+        r_peak = torch.zeros((1, labels.shape[0])).to(device)
+        for p in label_peaks:
+            for i in range(-3, 4):
+                if p + i >= 0 and p + i < labels.shape[0]:
+                    r_peak[0][p+i] = 1
+        pm = r_peak.transpose(-2, -1) @ r_peak
+        pm = F.interpolate(pm.view(1, 1, pm.shape[0], pm.shape[1]), scale_factor=0.25, mode='bilinear').squeeze(0).squeeze(0)
+        # Note: I couldn't figure out how to rescale ss to the range of [0, 1] while maintaining differentiability, so I did not use BCE
+        ce = F.cross_entropy(ss[0], pm)
+        for i in range(1, ss.shape[0]):
+            ce += F.cross_entropy(ss[i], pm)
+        return ce / ss.shape[0]

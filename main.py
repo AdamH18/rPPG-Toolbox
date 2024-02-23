@@ -75,6 +75,8 @@ def train_and_test(config, data_loader_dict):
         model_trainer = trainer.BigSmallTrainer.BigSmallTrainer(config, data_loader_dict)
     elif config.MODEL.NAME == 'PhysFormer':
         model_trainer = trainer.PhysFormerTrainer.PhysFormerTrainer(config, data_loader_dict)
+    elif config.MODEL.NAME == 'PhysFormerPP':
+        model_trainer = trainer.PhysFormerPPTrainer.PhysFormerPPTrainer(config, data_loader_dict)
     else:
         raise ValueError('Your Model is Not Supported  Yet!')
     model_trainer.train(data_loader_dict)
@@ -95,6 +97,8 @@ def test(config, data_loader_dict):
         model_trainer = trainer.BigSmallTrainer.BigSmallTrainer(config, data_loader_dict)
     elif config.MODEL.NAME == 'PhysFormer':
         model_trainer = trainer.PhysFormerTrainer.PhysFormerTrainer(config, data_loader_dict)
+    elif config.MODEL.NAME == 'PhysFormerPP':
+        model_trainer = trainer.PhysFormerPPTrainer.PhysFormerPPTrainer(config, data_loader_dict)
     else:
         raise ValueError('Your Model is Not Supported  Yet!')
     model_trainer.test(data_loader_dict)
@@ -170,13 +174,17 @@ if __name__ == "__main__":
                     name="train",
                     dataset_names=config.TRAIN.DATA.MULTI_DATASET,
                     raw_data_paths=config.TRAIN.DATA.MULTI_PATH,
-                    config_data=config.TRAIN.DATA
+                    config_data=config.TRAIN.DATA,
+                    sec_pre=config.MODEL.SECONDARY_PREPROCESS,
+                    model=config.MODEL.NAME
                 )
             else:
                 train_data_loader = train_loader(
                     name="train",
                     data_path=config.TRAIN.DATA.DATA_PATH,
-                    config_data=config.TRAIN.DATA)
+                    config_data=config.TRAIN.DATA,
+                    sec_pre=config.MODEL.SECONDARY_PREPROCESS,
+                    model=config.MODEL.NAME)
             data_loader_dict['train'] = DataLoader(
                 dataset=train_data_loader,
                 num_workers=16,
@@ -228,13 +236,17 @@ if __name__ == "__main__":
                     name="valid",
                     dataset_names=config.VALID.DATA.MULTI_DATASET,
                     raw_data_paths=config.VALID.DATA.MULTI_PATH,
-                    config_data=config.VALID.DATA
+                    config_data=config.VALID.DATA,
+                    sec_pre=config.MODEL.SECONDARY_PREPROCESS,
+                    model=config.MODEL.NAME
                 )
             else:
                 valid_data = valid_loader(
                     name="valid",
                     data_path=config.VALID.DATA.DATA_PATH,
-                    config_data=config.VALID.DATA)
+                    config_data=config.VALID.DATA,
+                    sec_pre=config.MODEL.SECONDARY_PREPROCESS,
+                    model=config.MODEL.NAME)
             data_loader_dict["valid"] = DataLoader(
                 dataset=valid_data,
                 num_workers=16,
@@ -285,13 +297,17 @@ if __name__ == "__main__":
                     name="test",
                     dataset_names=config.TEST.DATA.MULTI_DATASET,
                     raw_data_paths=config.TEST.DATA.MULTI_PATH,
-                    config_data=config.TEST.DATA
+                    config_data=config.TEST.DATA,
+                    sec_pre=config.MODEL.SECONDARY_PREPROCESS,
+                    model=config.MODEL.NAME
                 )
             else:
                 test_data = test_loader(
                     name="test",
                     data_path=config.TEST.DATA.DATA_PATH,
-                    config_data=config.TEST.DATA)
+                    config_data=config.TEST.DATA,
+                    sec_pre=config.MODEL.SECONDARY_PREPROCESS,
+                    model=config.MODEL.NAME)
             data_loader_dict["test"] = DataLoader(
                 dataset=test_data,
                 num_workers=16,
@@ -334,13 +350,17 @@ if __name__ == "__main__":
                     name="unsupervised",
                     dataset_names=config.UNSUPERVISED.DATA.MULTI_DATASET,
                     raw_data_paths=config.UNSUPERVISED.DATA.MULTI_PATH,
-                    config_data=config.UNSUPERVISED.DATA
+                    config_data=config.UNSUPERVISED.DATA,
+                    sec_pre=config.MODEL.SECONDARY_PREPROCESS,
+                    model=config.MODEL.NAME
                 )
         else:
             unsupervised_data = unsupervised_loader(
                 name="unsupervised",
                 data_path=config.UNSUPERVISED.DATA.DATA_PATH,
-                config_data=config.UNSUPERVISED.DATA)
+                config_data=config.UNSUPERVISED.DATA,
+                sec_pre=config.MODEL.SECONDARY_PREPROCESS,
+                model=config.MODEL.NAME)
         data_loader_dict["unsupervised"] = DataLoader(
             dataset=unsupervised_data,
             num_workers=16,

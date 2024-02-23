@@ -13,7 +13,7 @@ def _next_power_of_2(x):
     """Calculate the nearest power of 2."""
     return 1 if x == 0 else 2 ** (x - 1).bit_length()
 
-def _detrend(input_signal, lambda_value):
+def detrend(input_signal, lambda_value):
     """Detrend PPG signal."""
     signal_length = input_signal.shape[0]
     # observation matrix
@@ -99,11 +99,11 @@ def _calculate_SNR(pred_ppg_signal, hr_label, fs=30, low_pass=0.75, high_pass=2.
 def calculate_metric_per_video(predictions, labels, fs=30, diff_flag=True, use_bandpass=True, hr_method='FFT'):
     """Calculate video-level HR and SNR"""
     if diff_flag:  # if the predictions and labels are 1st derivative of PPG signal.
-        predictions = _detrend(np.cumsum(predictions), 100)
-        labels = _detrend(np.cumsum(labels), 100)
+        predictions = detrend(np.cumsum(predictions), 100)
+        labels = detrend(np.cumsum(labels), 100)
     else:
-        predictions = _detrend(predictions, 100)
-        labels = _detrend(labels, 100)
+        predictions = detrend(predictions, 100)
+        labels = detrend(labels, 100)
     if use_bandpass:
         # bandpass filter between [0.75, 2.5] Hz
         # equals [45, 150] beats per min

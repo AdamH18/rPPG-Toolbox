@@ -27,7 +27,7 @@ class Attention_mask(nn.Module):
 class DeepPhys(nn.Module):
 
     def __init__(self, in_channels=3, nb_filters1=32, nb_filters2=64, kernel_size=3, dropout_rate1=0.25,
-                 dropout_rate2=0.5, pool_size=(2, 2), nb_dense=128, img_size=36):
+                 dropout_rate2=0.5, pool_size=(2, 2), nb_dense=128, img_size=36, sec_pre = False):
         """Definition of DeepPhys.
         Args:
           in_channels: the number of input channel. Default: 3
@@ -75,7 +75,7 @@ class DeepPhys(nn.Module):
         # Dense layers
         if img_size == 36:
             self.final_dense_1 = nn.Linear(3136, self.nb_dense, bias=True)
-        elif img_size == 72:
+        elif img_size == 72 or sec_pre:
             self.final_dense_1 = nn.Linear(16384, self.nb_dense, bias=True)
         elif img_size == 96:
             self.final_dense_1 = nn.Linear(30976, self.nb_dense, bias=True)

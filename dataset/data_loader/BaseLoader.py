@@ -24,6 +24,25 @@ from torch.utils.data import Dataset
 from tqdm import tqdm
 from retinaface import RetinaFace   # Source code: https://github.com/serengil/retinaface
 
+# Set desired secondary presets or none of nothing should be done
+MODEL_SECONDARY_PROCESSING_PRESETS = {
+    "DeepPhys": [
+        (72, 72), #Resize image size
+        ["DiffNorm", "Standard"], #List of data transforms to include
+        True #Label transform from standardized to diffnorm
+    ],
+    "PhysFormer": [
+        (128, 128), #Resize image size
+        ["Standard"], #List of data transforms to include
+        False #Label transform from standardized to diffnorm
+    ],
+    "PhysFormerPP": [
+        (128, 128), #Resize image size
+        ["Standard"], #List of data transforms to include
+        False #Label transform from standardized to diffnorm
+    ]
+}
+
 
 class BaseLoader(Dataset):
     """The base class for data loading based on pytorch Dataset.
@@ -41,7 +60,7 @@ class BaseLoader(Dataset):
             "--preprocess", default=None, action='store_true')
         return parser
 
-    def __init__(self, dataset_name, raw_data_path, config_data):
+    def __init__(self, dataset_name, raw_data_path, config_data, sec_pre, model):
         """Inits dataloader with lists of files.
 
         Args:
@@ -58,6 +77,8 @@ class BaseLoader(Dataset):
         self.preprocessed_data_len = 0
         self.data_format = config_data.DATA_FORMAT
         self.do_preprocess = config_data.DO_PREPROCESS
+        self.sec_pre = sec_pre
+        self.model = model
         self.config_data = config_data
 
         assert (config_data.BEGIN < config_data.END)
@@ -90,6 +111,24 @@ class BaseLoader(Dataset):
         """Returns a clip of video(3,T,W,H) and it's corresponding signals(T)."""
         data = np.load(self.inputs[index])
         label = np.load(self.labels[index])
+        if self.sec_pre:
+            data = data.astype(np.float64)
+            settings = MODEL_SECONDARY_PROCESSING_PRESETS[self.model]
+            if settings[0] != None:
+                resized_frames = np.zeros((data.shape[0], settings[0][0], settings[0][1], 3))
+                for i, frame in enumerate(data):
+                    resized_frames[i] = cv2.resize(np.array(frame), settings[0], interpolation=cv2.INTER_AREA)
+                data = resized_frames
+            if settings[1] != None:
+                proc_data = list()
+                for typ in settings[1]:
+                    if typ == "DiffNorm":
+                        proc_data.append(BaseLoader.diff_normalize_data(data))
+                    elif typ == "Standard":
+                        proc_data.append(BaseLoader.standardized_data(data))
+                data = np.concatenate(proc_data, axis=-1)
+            if settings[2]:
+                label = BaseLoader.diff_normalize_label(label)
         if self.data_format == 'NDCHW':
             data = np.transpose(data, (0, 3, 1, 2))
         elif self.data_format == 'NCDHW':

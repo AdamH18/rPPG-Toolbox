@@ -8,8 +8,8 @@
             "name": "Python: Main",
             "type": "python",
             "request": "launch",
-            "program": "~/rPPG/rPPG-Toolbox/main.py",
-            "args": ["--config_file", "~/rPPG/rPPG-Toolbox/configs/my_configs/UBFC-rPPG_UBFC-rPPG_COHFACE_TSCAN_BASIC.yaml"],
+            "program": "/home/adamh/rPPG/rPPG-Toolbox/main.py",
+            "args": ["--config_file", "/home/adamh/rPPG/rPPG-Toolbox/configs/my_configs/UBFC-rPPG_UBFC-rPPG_COHFACE_TSCAN_BASIC.yaml"],
             "console": "integratedTerminal",
             "preLaunchTask": "",
             "justMyCode": false
@@ -18,8 +18,8 @@
             "name": "Python: Other",
             "type": "python",
             "request": "launch",
-            "program": "~/rPPG/rPPG-Toolbox/main.py",
-            "args": ["--config_file", "~/rPPG/rPPG-Toolbox/configs/my_configs/COHFACE_COHFACE_COHFACE_TSCAN_BASIC.yaml"],
+            "program": "/home/adamh/rPPG/rPPG-Toolbox/main.py",
+            "args": ["--config_file", "/home/adamh/rPPG/rPPG-Toolbox/configs/my_configs/COHFACE_COHFACE_COHFACE_TSCAN_BASIC.yaml"],
             "console": "integratedTerminal",
             "preLaunchTask": "",
             "justMyCode": false
@@ -28,8 +28,8 @@
             "name": "Python: Multi",
             "type": "python",
             "request": "launch",
-            "program": "~/rPPG/rPPG-Toolbox/main.py",
-            "args": ["--config_file", "~/rPPG/rPPG-Toolbox/configs/my_configs/MultiDataset_UBFC-rPPG_COHFACE_TSCAN_BASIC.yaml"],
+            "program": "/home/adamh/rPPG/rPPG-Toolbox/main.py",
+            "args": ["--config_file", "/home/adamh/rPPG/rPPG-Toolbox/configs/my_configs/MultiDataset_UBFC-rPPG_COHFACE_TSCAN_BASIC.yaml"],
             "console": "integratedTerminal",
             "preLaunchTask": "",
             "justMyCode": false
@@ -38,8 +38,48 @@
             "name": "Python: Bulk-Preprocess",
             "type": "python",
             "request": "launch",
-            "program": "~/rPPG/rPPG-Toolbox/main.py",
-            "args": ["--config_file", "~/rPPG/rPPG-Toolbox/configs/my_configs/PreprocessDatasets.yaml"],
+            "program": "/home/adamh/rPPG/rPPG-Toolbox/main.py",
+            "args": ["--config_file", "/home/adamh/rPPG/rPPG-Toolbox/configs/my_configs/PreprocessDatasets.yaml"],
+            "console": "integratedTerminal",
+            "preLaunchTask": "",
+            "justMyCode": false
+        },
+        {
+            "name": "Python: Test DeepPhys",
+            "type": "python",
+            "request": "launch",
+            "program": "/home/adamh/rPPG/rPPG-Toolbox/main.py",
+            "args": ["--config_file", "/home/adamh/rPPG/rPPG-Toolbox/configs/my_configs/PURE_PURE_UBFC-rPPG_DEEPPHYS_BASIC.yaml"],
+            "console": "integratedTerminal",
+            "preLaunchTask": "",
+            "justMyCode": false
+        },
+        {
+            "name": "Python: Test PhysFormer",
+            "type": "python",
+            "request": "launch",
+            "program": "/home/adamh/rPPG/rPPG-Toolbox/main.py",
+            "args": ["--config_file", "/home/adamh/rPPG/rPPG-Toolbox/configs/my_configs/PURE_PURE_UBFC-rPPG_PHYSFORMER.yaml"],
+            "console": "integratedTerminal",
+            "preLaunchTask": "",
+            "justMyCode": false
+        },
+        {
+            "name": "Python: Test PhysFormer++",
+            "type": "python",
+            "request": "launch",
+            "program": "/home/adamh/rPPG/rPPG-Toolbox/main.py",
+            "args": ["--config_file", "/home/adamh/rPPG/rPPG-Toolbox/configs/my_configs/PURE_PURE_UBFC-rPPG_PHYSFORMER++.yaml"],
+            "console": "integratedTerminal",
+            "preLaunchTask": "",
+            "justMyCode": false
+        },
+        {
+            "name": "Python: Test Unsupervised",
+            "type": "python",
+            "request": "launch",
+            "program": "/home/adamh/rPPG/rPPG-Toolbox/main.py",
+            "args": ["--config_file", "/home/adamh/rPPG/rPPG-Toolbox/configs/my_configs/UBFC-rPPG_UNSUPERVISED.yaml"],
             "console": "integratedTerminal",
             "preLaunchTask": "",
             "justMyCode": false

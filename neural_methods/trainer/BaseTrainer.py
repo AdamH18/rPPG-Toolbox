@@ -1,3 +1,5 @@
+import numpy as np
+from scipy.interpolate import RegularGridInterpolator
 import torch
 from torch.autograd import Variable
 import matplotlib.pyplot as plt
