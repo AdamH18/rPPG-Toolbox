@@ -129,7 +129,8 @@ class TorchLossComputer(object):
                     r_peak[0][p+i] = 1
         pm = r_peak.transpose(-2, -1) @ r_peak
         pm = F.interpolate(pm.view(1, 1, pm.shape[0], pm.shape[1]), scale_factor=0.25, mode='bilinear').squeeze(0).squeeze(0)
-        bce = F.binary_cross_entropy(F.sigmoid(ss[0]), pm)
+        ss = F.sigmoid(ss)
+        bce = F.binary_cross_entropy(ss[0], pm)
         for i in range(1, ss.shape[0]):
-            bce += F.binary_cross_entropy(F.sigmoid(ss[i]), pm)
+            bce += F.binary_cross_entropy(ss[i], pm)
         return bce / ss.shape[0]

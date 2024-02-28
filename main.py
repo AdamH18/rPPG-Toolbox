@@ -77,6 +77,8 @@ def train_and_test(config, data_loader_dict):
         model_trainer = trainer.PhysFormerTrainer.PhysFormerTrainer(config, data_loader_dict)
     elif config.MODEL.NAME == 'PhysFormerPP':
         model_trainer = trainer.PhysFormerPPTrainer.PhysFormerPPTrainer(config, data_loader_dict)
+    elif config.MODEL.NAME == 'APNET':
+        model_trainer = trainer.APNETTrainer.APNETTrainer(config, data_loader_dict)
     else:
         raise ValueError('Your Model is Not Supported  Yet!')
     model_trainer.train(data_loader_dict)
@@ -99,6 +101,8 @@ def test(config, data_loader_dict):
         model_trainer = trainer.PhysFormerTrainer.PhysFormerTrainer(config, data_loader_dict)
     elif config.MODEL.NAME == 'PhysFormerPP':
         model_trainer = trainer.PhysFormerPPTrainer.PhysFormerPPTrainer(config, data_loader_dict)
+    elif config.MODEL.NAME == 'APNET':
+        model_trainer = trainer.APNETTrainer.APNETTrainer(config, data_loader_dict)
     else:
         raise ValueError('Your Model is Not Supported  Yet!')
     model_trainer.test(data_loader_dict)

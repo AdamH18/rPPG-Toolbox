@@ -75,6 +75,16 @@
             "justMyCode": false
         },
         {
+            "name": "Python: Test APNET",
+            "type": "python",
+            "request": "launch",
+            "program": "/home/adamh/rPPG/rPPG-Toolbox/main.py",
+            "args": ["--config_file", "/home/adamh/rPPG/rPPG-Toolbox/configs/my_configs/PURE_PURE_UBFC-rPPG_APNET.yaml"],
+            "console": "integratedTerminal",
+            "preLaunchTask": "",
+            "justMyCode": false
+        },
+        {
             "name": "Python: Test Unsupervised",
             "type": "python",
             "request": "launch",

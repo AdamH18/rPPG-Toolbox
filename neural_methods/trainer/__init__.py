@@ -6,3 +6,4 @@ import neural_methods.trainer.EfficientPhysTrainer
 import neural_methods.trainer.BigSmallTrainer
 import neural_methods.trainer.PhysFormerTrainer
 import neural_methods.trainer.PhysFormerPPTrainer
+import neural_methods.trainer.APNETTrainer

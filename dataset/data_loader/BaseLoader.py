@@ -40,6 +40,11 @@ MODEL_SECONDARY_PROCESSING_PRESETS = {
         (128, 128), #Resize image size
         ["Standard"], #List of data transforms to include
         False #Label transform from standardized to diffnorm
+    ],
+    "APNET": [
+        (128, 128), #Resize image size
+        ["Standard"], #List of data transforms to include
+        False #Label transform from standardized to diffnorm
     ]
 }
 
