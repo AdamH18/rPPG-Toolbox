@@ -82,8 +82,19 @@ class APNET(nn.Module):
             nn.AdaptiveAvgPool2d((self.hwDim, 16))
         )
 
+        self.end_2dconv = nn.Conv2d(3, tDim, kernel_size=3, padding='same')
+        self.end_1dconv = nn.Conv1d(tDim, 1, kernel_size=3, padding='same')
+
+        self.residual_block = torch.nn.Sequential(
+            torch.nn.Conv1d(tDim, tDim, kernel_size=3, padding='same'),
+            torch.nn.ReLU(),
+            torch.nn.BatchNorm1d(tDim),
+            torch.nn.Conv1d(tDim, tDim, kernel_size=3, padding='same'),
+            torch.nn.ReLU(),
+            torch.nn.BatchNorm1d(tDim),
+        )
+
     def forward(self, x):
-        x = x[:, :, :64, :, :]
         b, c, t, h, w = x.shape
 
         xt = x.transpose(1, 2).reshape((b*t, c, h, w))
@@ -102,4 +113,12 @@ class APNET(nn.Module):
         xh = self.h_spatial(xh).reshape(b, c, h, 4, 4)
         xw = self.w_spatial(xw).reshape(b, c, w, 4, 4)
 
-        c = 0
+        #Feature mix with case 1. Skip interpolation as all dims should be 128
+        mix = (((xw*xh) @ xt) + xt).reshape(b, c, t, 16)
+
+        mix = self.end_2dconv(mix)
+        mix = torch.mean(mix, dim=3)
+        mix = self.residual_block(mix)
+        mix = self.end_1dconv(mix).squeeze(1)
+
+        return mix

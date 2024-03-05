@@ -29,7 +29,7 @@ class APNETTrainer(BaseTrainer):
         self.min_valid_loss = None
         self.best_epoch = 0
 
-        self.model = APNET(tDim = 64).to(self.device)#config.TRAIN.DATA.PREPROCESS.CHUNK_LENGTH).to(self.device)  # [3, T, 128,128]
+        self.model = APNET(config.TRAIN.DATA.PREPROCESS.CHUNK_LENGTH).to(self.device)  # [3, T, 128,128]
 
         if config.TOOLBOX_MODE == "train_and_test":
             self.num_train_batches = len(data_loader["train"])
