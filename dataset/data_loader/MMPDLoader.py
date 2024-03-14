@@ -121,6 +121,26 @@ class MMPDLoader(BaseLoader):
 
         input_name_list, label_name_list = self.save_multi_process(frames_clips, bvps_clips, saved_filename)
         file_list_dict[i] = input_name_list
+    
+    def pose_lum_preprocess_dataset_subprocess(self, data_dirs, config_preprocess, i, file_list_dict):
+        """Preprocesses the raw data."""
+
+        # Read Video Frames
+        frames, bvps, light, motion, exercise, skin_color, gender, glasser, hair_cover, makeup \
+            = self.read_mat(data_dirs[i]['path'])
+        saved_filename = 'subject' + str(data_dirs[i]['subject'])
+        saved_filename += f'_L{light}_MO{motion}_E{exercise}_S{skin_color}_GE{gender}_GL{glasser}_H{hair_cover}_MA{makeup}'
+        frames = (np.round(frames * 255)).astype(np.uint8)
+        
+        data = self.pose_lum.process(frames)
+
+        if config_preprocess.DO_CHUNK:
+            data_clips = self.pose_lum_chunk(data, config_preprocess.CHUNK_LENGTH)
+        else:
+            data_clips = np.array([data])
+
+        input_name_list = self.pose_lum_save_multi_process(data_clips, saved_filename)
+        file_list_dict[i] = input_name_list
 
     def read_mat(self, mat_file):
         try:

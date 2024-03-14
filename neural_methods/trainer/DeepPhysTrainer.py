@@ -203,4 +203,5 @@ class DeepPhysTrainer(BaseTrainer):
         model_path = os.path.join(
             self.model_dir, self.model_file_name + '_Epoch' + str(index) + '.pth')
         torch.save(self.model.state_dict(), model_path)
+        print('Saved Model Path: ', model_path)
  

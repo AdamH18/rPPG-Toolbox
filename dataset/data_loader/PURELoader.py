@@ -126,6 +126,25 @@ class PURELoader(BaseLoader):
         frames_clips, bvps_clips = self.preprocess(frames, bvps, config_preprocess)
         input_name_list, label_name_list = self.save_multi_process(frames_clips, bvps_clips, saved_filename)
         file_list_dict[i] = input_name_list
+    
+    def pose_lum_preprocess_dataset_subprocess(self, data_dirs, config_preprocess, i, file_list_dict):
+        """Preprocesses the raw data."""
+        filename = os.path.split(data_dirs[i]['path'])[-1]
+        saved_filename = data_dirs[i]['index']
+
+        # Read Video Frames
+        frames = self.read_video(
+                os.path.join(data_dirs[i]['path'], filename, ""))
+        
+        data = self.pose_lum.process(frames)
+
+        if config_preprocess.DO_CHUNK:
+            data_clips = self.pose_lum_chunk(data, config_preprocess.CHUNK_LENGTH)
+        else:
+            data_clips = np.array([data])
+
+        input_name_list = self.pose_lum_save_multi_process(data_clips, saved_filename)
+        file_list_dict[i] = input_name_list
 
     @staticmethod
     def read_video(video_file):

@@ -16,6 +16,7 @@ from unsupervised_methods.methods import POS_WANG
 from unsupervised_methods import utils
 import math
 from multiprocessing import Pool, Process, Value, Array, Manager
+from dataset.head_pose_estimator.HeadPoseEstimator import HeadPoseEstimator
 
 import cv2
 import numpy as np
@@ -92,6 +93,10 @@ class BaseLoader(Dataset):
         if config_data.DO_PREPROCESS:
             self.raw_data_dirs = self.get_raw_data(self.raw_data_path)
             self.preprocess_dataset(self.raw_data_dirs, config_data.PREPROCESS, config_data.BEGIN, config_data.END)
+        elif config_data.POSE_LUM_PREPROCESS:
+            self.pose_lum = HeadPoseEstimator()
+            self.raw_data_dirs = self.get_raw_data(self.raw_data_path)
+            self.pose_lum_preprocess_dataset(self.raw_data_dirs, config_data.PREPROCESS, config_data.BEGIN, config_data.END)
         else:
             if not os.path.exists(self.cached_path):
                 print('CACHED_PATH:', self.cached_path)
@@ -252,6 +257,20 @@ class BaseLoader(Dataset):
         file_list_dict = self.multi_process_manager(data_dirs_split, config_preprocess) 
         self.build_file_list(file_list_dict)  # build file list
         self.load_preprocessed_data()  # load all data and corresponding labels (sorted for consistency)
+        print("Total Number of raw files preprocessed:", len(data_dirs_split), end='\n\n')
+    
+    def pose_lum_preprocess_dataset(self, data_dirs, config_preprocess, begin, end):
+        """Parses and preprocesses all the raw data based on split.
+
+        Args:
+            data_dirs(List[str]): a list of video_files.
+            config_preprocess(CfgNode): preprocessing settings(ref:config.py).
+            begin(float): index of begining during train/val split.
+            end(float): index of ending during train/val split.
+        """
+        data_dirs_split = self.split_raw_data(data_dirs, begin, end)  # partition dataset 
+        # send data directories to be processed
+        file_list_dict = self.pose_lum_multi_process_manager(data_dirs_split, config_preprocess)
         print("Total Number of raw files preprocessed:", len(data_dirs_split), end='\n\n')
 
     def preprocess(self, frames, bvps, config_preprocess):
@@ -457,6 +476,22 @@ class BaseLoader(Dataset):
         frames_clips = [frames[i * chunk_length:(i + 1) * chunk_length] for i in range(clip_num)]
         bvps_clips = [bvps[i * chunk_length:(i + 1) * chunk_length] for i in range(clip_num)]
         return np.array(frames_clips), np.array(bvps_clips)
+    
+    def pose_lum_chunk(self, data, chunk_length):
+        """Chunk the data into small chunks.
+
+        Args:
+            frames(np.array): video frames.
+            bvps(np.array): blood volumne pulse (PPG) labels.
+            chunk_length(int): the length of each chunk.
+        Returns:
+            frames_clips: all chunks of face cropped frames
+            bvp_clips: all chunks of bvp frames
+        """
+
+        clip_num = data.shape[0] // chunk_length
+        data_clips = [data[i * chunk_length:(i + 1) * chunk_length] for i in range(clip_num)]
+        return np.array(data_clips)
 
     def save(self, frames_clips, bvps_clips, filename):
         """Save all the chunked data.
@@ -509,6 +544,28 @@ class BaseLoader(Dataset):
             np.save(label_path_name, bvps_clips[i])
             count += 1
         return input_path_name_list, label_path_name_list
+    
+    def pose_lum_save_multi_process(self, data_clips, filename):
+        """Save all the chunked data with multi-thread processing.
+
+        Args:
+            data(np.array): pose and luminance data.
+            filename: name the filename
+        Returns:
+            input_path_name_list: list of input path names
+            label_path_name_list: list of label path names
+        """
+        if not os.path.exists(self.cached_path):
+            os.makedirs(self.cached_path, exist_ok=True)
+        count = 0
+        input_path_name_list = []
+        for i in range(len(data_clips)):
+            assert (len(self.inputs) == len(self.labels))
+            input_path_name = self.cached_path + os.sep + "{0}_input{1}_pl.npy".format(filename, str(count))
+            input_path_name_list.append(input_path_name)
+            np.save(input_path_name, data_clips[i])
+            count += 1
+        return input_path_name_list
 
     def multi_process_manager(self, data_dirs, config_preprocess, multi_process_quota=4):
         """Allocate dataset preprocessing across multiple processes.
@@ -538,6 +595,53 @@ class BaseLoader(Dataset):
                 if running_num < multi_process_quota:  # in case of too many processes
                     # send data to be preprocessing task
                     p = Process(target=self.preprocess_dataset_subprocess, 
+                                args=(data_dirs,config_preprocess, i, file_list_dict))
+                    p.start()
+                    p_list.append(p)
+                    running_num += 1
+                    process_flag = False
+                for p_ in p_list:
+                    if not p_.is_alive():
+                        p_list.remove(p_)
+                        p_.join()
+                        running_num -= 1
+                        pbar.update(1)
+        # join all processes
+        for p_ in p_list:
+            p_.join()
+            pbar.update(1)
+        pbar.close()
+
+        return file_list_dict
+
+    def pose_lum_multi_process_manager(self, data_dirs, config_preprocess, multi_process_quota=4):
+        """Allocate dataset preprocessing across multiple processes.
+
+        Args:
+            data_dirs(List[str]): a list of video_files.
+            config_preprocess(Dict): a dictionary of preprocessing configurations
+            multi_process_quota(Int): max number of sub-processes to spawn for multiprocessing
+        Returns:
+            file_list_dict(Dict): Dictionary containing information regarding processed data ( path names)
+        """
+        print('Preprocessing pose and luminace of dataset...')
+        file_num = len(data_dirs)
+        choose_range = range(0, file_num)
+        pbar = tqdm(list(choose_range))
+
+        # shared data resource
+        manager = Manager()  # multi-process manager
+        file_list_dict = manager.dict()  # dictionary for all processes to store processed files
+        p_list = []  # list of processes
+        running_num = 0  # number of running processes
+
+        # in range of number of files to process
+        for i in choose_range:
+            process_flag = True
+            while process_flag:  # ensure that every i creates a process
+                if running_num < multi_process_quota:  # in case of too many processes
+                    # send data to be preprocessing task
+                    p = Process(target=self.pose_lum_preprocess_dataset_subprocess, 
                                 args=(data_dirs,config_preprocess, i, file_list_dict))
                     p.start()
                     p_list.append(p)

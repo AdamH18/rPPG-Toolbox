@@ -10,6 +10,7 @@ TRAIN:
     FS: 30
     DATASET: UBFC-rPPG
     DO_PREPROCESS: False               # if first time, should be true
+    STMAP_PREPROCESS: True
     DATA_FORMAT: NDCHW
     DATA_PATH: "/home/adamh/rPPG/Data/UBFC_DATASET/DATASET_2"                     # Raw dataset path, need to be updated
     CACHED_PATH: "/home/adamh/rPPG/rPPG-Toolbox/PreprocessedData"    # Processed dataset save path, need to be updated

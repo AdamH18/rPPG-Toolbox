@@ -61,7 +61,6 @@ class COHFACELoader(BaseLoader):
                              "path": os.path.join(data_dir, str(i))})
         return dirs
     
-    # TODO: Could be improved for COHFACE
     def split_raw_data(self, data_dirs, begin, end):
         """Returns a subset of data dirs, split with begin and end values."""
         if begin == 0 and end == 1:  # return the full directory if begin == 0 and end == 1
@@ -98,6 +97,25 @@ class COHFACELoader(BaseLoader):
         bvps = BaseLoader.resample_ppg(bvps, target_length)
         frames_clips, bvps_clips = self.preprocess(frames, bvps, config_preprocess)
         input_name_list, label_name_list = self.save_multi_process(frames_clips, bvps_clips, data_dirs[i]["index"])
+        file_list_dict[i] = input_name_list
+    
+    def pose_lum_preprocess_dataset_subprocess(self, data_dirs, config_preprocess, i, file_list_dict):
+        """Preprocesses the raw data."""
+
+        # Read Video Frames
+        frames = self.read_video(
+            os.path.join(
+                data_dirs[i]["path"],
+                "data.avi"))
+        
+        data = self.pose_lum.process(frames)
+
+        if config_preprocess.DO_CHUNK:
+            data_clips = self.pose_lum_chunk(data, config_preprocess.CHUNK_LENGTH)
+        else:
+            data_clips = np.array([data])
+
+        input_name_list = self.pose_lum_save_multi_process(data_clips, data_dirs[i]["index"])
         file_list_dict[i] = input_name_list
 
     @staticmethod

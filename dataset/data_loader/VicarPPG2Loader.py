@@ -129,6 +129,46 @@ class VicarPPG2Loader(BaseLoader):
         input_name_list, label_name_list = self.save_multi_process(frames_clips, bvps_clips, data_dirs[i]["index"])
         file_list_dict[i] = input_name_list
     
+    def pose_lum_preprocess_dataset_subprocess(self, data_dirs, config_preprocess, i, file_list_dict):
+        """Preprocesses the raw data."""
+        
+        # Read Video Frames
+        VidObj = cv2.VideoCapture(data_dirs[i]["path"][0])
+        VidObj.set(cv2.CAP_PROP_POS_MSEC, 0)
+        success, frame = VidObj.read()
+        raw_frames = list()
+        data = list()
+        count = 1
+        while (success):
+            frame = cv2.cvtColor(np.array(frame), cv2.COLOR_BGR2RGB)
+            frame = np.asarray(frame)
+            frame[np.isnan(frame)] = 0
+            raw_frames.append(frame)
+            # Videos are too massive to store whole thing in memory, so preprocess every X frames to decrease size requirements
+            # Even with this, a single raw video cropped to 144x144 will take up 1.3GB of memory. Additional preprocessing that
+            # turns the uint8s into float64s will multiply that memory cost by 8
+            if count % self.BULK_FRAME_WORK == 0:
+                partial_data = self.pose_lum.process(raw_frames)
+                data.append(partial_data)
+                raw_frames = list()
+            success, frame = VidObj.read()
+            count += 1
+        # Preprocess final batch of frames
+        if len(raw_frames) > 0:
+            partial_data = self.pose_lum.process(raw_frames)
+            data.append(partial_data)
+            raw_frames = list()
+        
+        # Concatenate along time axis
+        data = np.concatenate(data, axis=1)
+            
+        if config_preprocess.DO_CHUNK:
+            data_clips = self.pose_lum_chunk(data, config_preprocess.CHUNK_LENGTH)
+        else:
+            data_clips = np.array([data])
+        input_name_list = self.pose_lum_save_multi_process(data_clips, data_dirs[i]["index"])
+        file_list_dict[i] = input_name_list
+    
     @staticmethod
     def read_video_frames(video_file):
         """Reads a video file, returns number of frames

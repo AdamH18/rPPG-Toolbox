@@ -1,0 +1,37 @@
+BASE: ['']
+TOOLBOX_MODE: "preprocess"      # "train_and_test"  or "only_test"
+TRAIN:
+  DATA:
+    FS: 30
+    DATASET: MultiDataset
+    MULTI_DATASET: ["UBFC-rPPG", "UBFC-rPPG1", "COHFACE", "VICARPPG2"]
+    DO_PREPROCESS: False               # if first time, should be true
+    POSE_LUM_PREPROCESS: True
+    DATA_FORMAT: NDCHW
+    MULTI_PATH: ["/home/adamh/rPPG/Data/UBFC_DATASET/DATASET_2", "/home/adamh/rPPG/Data/UBFC_DATASET/DATASET_1", "/home/adamh/rPPG/Data/cohface/RawData", "/home/adamh/rPPG/Data/VicarPPG-2"]
+    CACHED_PATH: "/home/adamh/rPPG/rPPG-Toolbox/PreprocessedData"    # Processed dataset save path, need to be updated
+    EXP_DATA_NAME: ""
+    BEGIN: 0.0
+    END: 0.15
+    PREPROCESS:
+      DATA_TYPE: ['Raw']
+      DATA_AUG: ['None']    # 'None' or 'Motion' is supported, used if the data path points to an augmented dataset or requires augmentation
+      LABEL_TYPE: Standardized
+      DO_CHUNK: True
+      CHUNK_LENGTH: 128
+      CROP_FACE:
+        DO_CROP_FACE: True
+        BACKEND: 'HC'    # HC for Haar Cascade, RF for RetinaFace
+        USE_LARGE_FACE_BOX: True
+        LARGE_BOX_COEF: 1.3
+        DETECTION:
+          DO_DYNAMIC_DETECTION: True
+          DYNAMIC_DETECTION_FREQUENCY: 30
+          USE_MEDIAN_FACE_BOX: False    # This should be used ONLY if dynamic detection is used
+      RESIZE:
+        H: 144
+        W: 144
+DEVICE: cuda:0
+NUM_OF_GPU_TRAIN: 1
+LOG:
+  PATH: runs\exp
