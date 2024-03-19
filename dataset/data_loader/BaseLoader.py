@@ -707,7 +707,7 @@ class BaseLoader(Dataset):
         # generate a list of all preprocessed / chunked data files
         file_list = []
         for fname in filename_list:
-            processed_file_data = list(glob.glob(self.cached_path + os.sep + "{0}_input*.npy".format(fname)))
+            processed_file_data = list(glob.glob(self.cached_path + os.sep + "{0}_input*[0-9].npy".format(fname)))
             file_list += processed_file_data
 
         if not file_list:
