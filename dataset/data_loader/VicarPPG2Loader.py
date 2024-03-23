@@ -135,9 +135,10 @@ class VicarPPG2Loader(BaseLoader):
         # Read Video Frames
         VidObj = cv2.VideoCapture(data_dirs[i]["path"][0])
         VidObj.set(cv2.CAP_PROP_POS_MSEC, 0)
+        vidLen = int(VidObj.get(cv2.CAP_PROP_FRAME_COUNT))
         success, frame = VidObj.read()
         raw_frames = list()
-        data = list()
+        data = np.zeros((vidLen, 7))
         count = 1
         while (success):
             frame = cv2.cvtColor(np.array(frame), cv2.COLOR_BGR2RGB)
@@ -148,19 +149,14 @@ class VicarPPG2Loader(BaseLoader):
             # Even with this, a single raw video cropped to 144x144 will take up 1.3GB of memory. Additional preprocessing that
             # turns the uint8s into float64s will multiply that memory cost by 8
             if count % self.BULK_FRAME_WORK == 0:
-                partial_data = self.pose_lum.process(raw_frames)
-                data.append(partial_data)
+                data[count-self.BULK_FRAME_WORK:count] = self.pose_lum.process(np.array(raw_frames))
                 raw_frames = list()
             success, frame = VidObj.read()
             count += 1
         # Preprocess final batch of frames
         if len(raw_frames) > 0:
-            partial_data = self.pose_lum.process(raw_frames)
-            data.append(partial_data)
+            data[count-len(raw_frames)-1:] = self.pose_lum.process(np.array(raw_frames))
             raw_frames = list()
-        
-        # Concatenate along time axis
-        data = np.concatenate(data, axis=1)
             
         if config_preprocess.DO_CHUNK:
             data_clips = self.pose_lum_chunk(data, config_preprocess.CHUNK_LENGTH)

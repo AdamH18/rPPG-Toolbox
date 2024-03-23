@@ -20,8 +20,8 @@ from dataset.head_pose_estimator.utils import refine
 
 class HeadPoseEstimator:
     def __init__(self):
-        self.face_detector = FaceDetector("/home/adamh/rPPG/rPPG-Toolbox/dataset/head_pose_estimator/assets/face_detector.onnx")
-        self.mark_detector = MarkDetector("/home/adamh/rPPG/rPPG-Toolbox/dataset/head_pose_estimator/assets/face_landmarks.onnx")
+        self.face_detector = FaceDetector("/home/adamh/rPPG-Toolbox/dataset/head_pose_estimator/assets/face_detector.onnx")
+        self.mark_detector = MarkDetector("/home/adamh/rPPG-Toolbox/dataset/head_pose_estimator/assets/face_landmarks.onnx")
         self.pose_estimator = None
 
     def process(self, frames):
@@ -51,6 +51,9 @@ class HeadPoseEstimator:
                 face = refine(faces, self.width, self.height, 0.15)[0]
                 x1, y1, x2, y2 = face[:4].astype(int)
                 patch = frame[y1:y2, x1:x2]
+                if x1 == x2 or y1 == y2:
+                    poses.append(cur_pose)
+                    continue
 
                 # Run the mark detection.
                 marks = self.mark_detector.detect([patch])[0].reshape([68, 2])

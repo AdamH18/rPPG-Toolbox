@@ -160,7 +160,7 @@ class MultiHeadedCrossAndSelfAttention_TDC_gra_sharp(nn.Module):
         kf = kf.flatten(2).transpose(1, 2)  # [B, 4*4*40, dim]
         vf = vf.flatten(2).transpose(1, 2)  # [B, 4*4*40, dim]
         ks = ks.flatten(1).view(B, C, P).transpose(1, 2)  # [B, 4*4*40, dim]
-        vs = vs.flatten(2).view(B, C, P).transpose(1, 2)  # [B, 4*4*40, dim]
+        vs = vs.flatten(1).view(B, C, P).transpose(1, 2)  # [B, 4*4*40, dim]
         
         q, kf, vf, ks, vs = (split_last(x, (self.n_heads, -1)).transpose(1, 2) for x in [q, kf, vf, ks, vs])
         # (B, H, S, W) @ (B, H, W, S) -> (B, H, S, S) -softmax-> (B, H, S, S)

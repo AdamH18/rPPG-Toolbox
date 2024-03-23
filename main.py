@@ -3,6 +3,7 @@
 import argparse
 import random
 import time
+import os
 
 import numpy as np
 import torch
@@ -129,6 +130,10 @@ def unsupervised_method_inference(config, data_loader):
 
 
 if __name__ == "__main__":
+    # Required for the server to work properly for some reason
+    #os.environ["CUDA_VISIBLE_DEVICES"] = "0"
+    #print(torch.cuda.is_available())
+
     # parse arguments.
     parser = argparse.ArgumentParser()
     parser = add_args(parser)
@@ -236,7 +241,7 @@ if __name__ == "__main__":
         # a supported dataset name, and a valid dataset path
         if (config.VALID.DATA.DATASET and (config.VALID.DATA.DATA_PATH or config.VALID.DATA.MULTI_PATH) and not config.TEST.USE_LAST_EPOCH):
             if valid_loader == data_loader.MultiLoader.MultiLoader:
-                valid_data_loader = valid_loader(
+                valid_data = valid_loader(
                     name="valid",
                     dataset_names=config.VALID.DATA.MULTI_DATASET,
                     raw_data_paths=config.VALID.DATA.MULTI_PATH,
@@ -297,7 +302,7 @@ if __name__ == "__main__":
         # a supported dataset name, and a valid dataset path
         if config.TEST.DATA.DATASET and (config.TEST.DATA.DATA_PATH or config.TEST.DATA.MULTI_PATH):
             if test_loader == data_loader.MultiLoader.MultiLoader:
-                test_data_loader = test_loader(
+                test_data = test_loader(
                     name="test",
                     dataset_names=config.TEST.DATA.MULTI_DATASET,
                     raw_data_paths=config.TEST.DATA.MULTI_PATH,

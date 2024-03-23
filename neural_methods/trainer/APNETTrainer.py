@@ -29,7 +29,7 @@ class APNETTrainer(BaseTrainer):
         self.min_valid_loss = None
         self.best_epoch = 0
 
-        self.model = APNET(config.TRAIN.DATA.PREPROCESS.CHUNK_LENGTH).to(self.device)  # [3, T, 128,128]
+        self.model = APNET(hwDim=128, tDim=config.TRAIN.DATA.PREPROCESS.CHUNK_LENGTH, dropout=config.MODEL.DROP_RATE).to(self.device)  # [3, T, 128,128]
 
         if config.TOOLBOX_MODE == "train_and_test":
             self.num_train_batches = len(data_loader["train"])
@@ -61,7 +61,7 @@ class APNETTrainer(BaseTrainer):
             tbar = tqdm(data_loader["train"], ncols=80)
             for idx, batch in enumerate(tbar):
                 tbar.set_description("Train epoch %s" % epoch)
-                rPPG, x_visual, x_visual3232, x_visual1616 = self.model(
+                rPPG = self.model(
                     batch[0].to(torch.float32).to(self.device))
                 BVP_label = batch[1].to(
                     torch.float32).to(self.device)
@@ -123,7 +123,7 @@ class APNETTrainer(BaseTrainer):
                 vbar.set_description("Validation")
                 BVP_label = valid_batch[1].to(
                     torch.float32).to(self.device)
-                rPPG, x_visual, x_visual3232, x_visual1616 = self.model(
+                rPPG = self.model(
                     valid_batch[0].to(torch.float32).to(self.device))
                 rPPG = (rPPG - torch.mean(rPPG)) / torch.std(rPPG)  # normalize
                 BVP_label = (BVP_label - torch.mean(BVP_label)) / \
@@ -173,7 +173,7 @@ class APNETTrainer(BaseTrainer):
                 batch_size = test_batch[0].shape[0]
                 data, label = test_batch[0].to(
                     self.config.DEVICE), test_batch[1].to(self.config.DEVICE)
-                pred_ppg_test, _, _, _ = self.model(data)
+                pred_ppg_test = self.model(data)
 
                 if self.config.TEST.OUTPUT_SAVE_DIR:
                     label = label.cpu()

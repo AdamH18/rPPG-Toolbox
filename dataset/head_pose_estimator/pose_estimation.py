@@ -32,7 +32,7 @@ class PoseEstimator:
         self.t_vec = np.array(
             [[-14.97821226], [-10.62040383], [-2053.03596872]])
 
-    def _get_full_model_points(self, filename='/home/adamh/rPPG/rPPG-Toolbox/dataset/head_pose_estimator/assets/model.txt'):
+    def _get_full_model_points(self, filename='/home/adamh/rPPG-Toolbox/dataset/head_pose_estimator/assets/model.txt'):
         """Get all 68 3D model points from file"""
         raw_value = []
         with open(filename) as file:

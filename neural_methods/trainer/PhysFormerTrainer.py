@@ -49,7 +49,7 @@ class PhysFormerTrainer(BaseTrainer):
 
         if config.TOOLBOX_MODE == "train_and_test":
             self.model = ViT_ST_ST_Compact3_TDC_gra_sharp(
-                image_size=(self.chunk_len,config.TRAIN.DATA.PREPROCESS.RESIZE.H,config.TRAIN.DATA.PREPROCESS.RESIZE.W), 
+                image_size=(self.chunk_len,128,128), 
                 patches=(self.patch_size,) * 3, dim=self.dim, ff_dim=self.ff_dim, num_heads=self.num_heads, num_layers=self.num_layers, 
                 dropout_rate=self.dropout_rate, theta=self.theta).to(self.device)
             self.model = torch.nn.DataParallel(self.model, device_ids=list(range(config.NUM_OF_GPU_TRAIN)))
@@ -66,7 +66,7 @@ class PhysFormerTrainer(BaseTrainer):
             self.scheduler = optim.lr_scheduler.StepLR(self.optimizer, step_size=50, gamma=0.5)
         elif config.TOOLBOX_MODE == "only_test":
             self.model = ViT_ST_ST_Compact3_TDC_gra_sharp(
-                image_size=(self.chunk_len,config.TRAIN.DATA.PREPROCESS.RESIZE.H,config.TRAIN.DATA.PREPROCESS.RESIZE.W), 
+                image_size=(self.chunk_len,128,128), 
                 patches=(self.patch_size,) * 3, dim=self.dim, ff_dim=self.ff_dim, num_heads=self.num_heads, num_layers=self.num_layers, 
                 dropout_rate=self.dropout_rate, theta=self.theta).to(self.device)
             self.model = torch.nn.DataParallel(self.model, device_ids=list(range(config.NUM_OF_GPU_TRAIN)))

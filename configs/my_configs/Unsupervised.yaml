@@ -1,15 +1,24 @@
 BASE: ['']
 TOOLBOX_MODE: "unsupervised_method"      # "train_and_test"  or "only_test" or "unsupervised_method"
 UNSUPERVISED:
-  METHOD: ["ICA", "POS"]
+  METHOD: ["ICA", "CHROM", "POS"]
   METRICS: ['MAE', 'RMSE', 'MAPE', 'Pearson', 'SNR', 'BA', 'DTW']
   DATA:
     FS: 30
-    DATASET: UBFC-rPPG
-    DO_PREPROCESS: False               # if first time, should be true
+    DATASET: MMPD
+    DO_PREPROCESS: False                    # if first time, should be true
     DATA_FORMAT: NDHWC
-    DATA_PATH: "/home/adamh/rPPG/Data/UBFC_DATASET/DATASET_2"                     # Raw dataset path, need to be updated
-    CACHED_PATH: "/home/adamh/rPPG/rPPG-Toolbox/PreprocessedData"    # Processed dataset save path, need to be updated
+    DATA_PATH: "RawData/MMPD"          # need to be updated
+    CACHED_PATH: "PreprocessedData"    # Processed dataset save path, need to be updated
+    INFO:
+      LIGHT: [1, 2, 3, 4]  # 1 - LED-Low, 2 - LED-high, 3 - Incandescent, 4 - Nature
+      MOTION: [1, 2, 3, 4] # 1 - Stationary, 2 - Rotation, 3 - Talking, 4 - Walking
+      EXERCISE: [1, 2] # 1 - True, 2 - False
+      SKIN_COLOR: [3, 4, 5, 6] # Fitzpatrick Scale Skin Types - 3, 4, 5, 6
+      GENDER: [1, 2]  # 1 - Male, 2 - Female
+      GLASSER: [1, 2] # 1 - True, 2 - False
+      HAIR_COVER: [1, 2] # 1 - True, 2 - False
+      MAKEUP: [1, 2] # 1 - True, 2 - False
     EXP_DATA_NAME: ""
     BEGIN: 0.0
     END: 1.0
@@ -18,10 +27,10 @@ UNSUPERVISED:
       DATA_AUG: ['None']    # 'None' or 'Motion' is supported, used if the data path points to an augmented dataset or requires augmentation
       LABEL_TYPE: Standardized
       DO_CHUNK: True
-      CHUNK_LENGTH: 180
+      CHUNK_LENGTH: 128
       CROP_FACE:
         DO_CROP_FACE: True
-        BACKEND: 'HC'    # HC for Haar Cascade, RF for RetinaFace
+        BACKEND: 'RF'    # HC for Haar Cascade, RF for RetinaFace
         USE_LARGE_FACE_BOX: True
         LARGE_BOX_COEF: 1.3
         DETECTION:

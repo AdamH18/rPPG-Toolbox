@@ -31,7 +31,7 @@ class DeepPhysTrainer(BaseTrainer):
         self.sec_pre = config.MODEL.SECONDARY_PREPROCESS
         
         if config.TOOLBOX_MODE == "train_and_test":
-            self.model = DeepPhys(img_size=config.TRAIN.DATA.PREPROCESS.RESIZE.H, sec_pre=self.sec_pre).to(self.device)
+            self.model = DeepPhys(img_size=72, sec_pre=self.sec_pre).to(self.device)
             self.model = torch.nn.DataParallel(self.model, device_ids=list(range(config.NUM_OF_GPU_TRAIN)))
 
             self.num_train_batches = len(data_loader["train"])

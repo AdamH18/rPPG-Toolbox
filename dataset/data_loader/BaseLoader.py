@@ -46,6 +46,21 @@ MODEL_SECONDARY_PROCESSING_PRESETS = {
         (128, 128), #Resize image size
         ["Standard"], #List of data transforms to include
         False #Label transform from standardized to diffnorm
+    ],
+    "EfficientPhys": [
+        (72, 72), #Resize image size
+        ["Standard"], #List of data transforms to include
+        False #Label transform from standardized to diffnorm
+    ],
+    "Physnet": [
+        (128, 128), #Resize image size
+        ["DiffNorm"], #List of data transforms to include
+        True #Label transform from standardized to diffnorm
+    ],
+    "Tscan": [
+        (72, 72), #Resize image size
+        ["DiffNorm", "Standard"], #List of data transforms to include
+        True #Label transform from standardized to diffnorm
     ]
 }
 
@@ -327,7 +342,7 @@ class BaseLoader(Dataset):
 
         return frames_clips, bvps_clips
 
-    def face_detection(self, frame, backend, use_larger_box=False, larger_box_coef=1.0):
+    def face_detection(self, frame, backend, prev, use_larger_box=False, larger_box_coef=1.0):
         """Face detection on a single frame.
 
         Args:
@@ -365,7 +380,7 @@ class BaseLoader(Dataset):
             # This utilizes both the CPU and GPU
             res = RetinaFace.detect_faces(frame)
 
-            if len(res) > 0:
+            if len(res) > 0 and res is dict:
                 # Pick the highest score
                 highest_score_face = max(res.values(), key=lambda x: x['score'])
                 face_zone = highest_score_face['facial_area']
@@ -394,8 +409,9 @@ class BaseLoader(Dataset):
                 new_y = center_y - (square_size // 2)
                 face_box_coor = [new_x, new_y, square_size, square_size]
             else:
-                print("ERROR: No Face Detected")
-                face_box_coor = [0, 0, frame.shape[0], frame.shape[1]]
+                print("ERROR: No Face Detected, using previous face coordinates")
+                face_box_coor = prev
+                use_larger_box = False
         else:
             raise ValueError("Unsupported face detection backend!")
 
@@ -432,9 +448,11 @@ class BaseLoader(Dataset):
             num_dynamic_det = 1
         face_region_all = []
         # Perform face detection by num_dynamic_det" times.
+        coor = [0, 0, frames[0].shape[0], frames[0].shape[1]]
         for idx in range(num_dynamic_det):
             if use_face_detection:
-                face_region_all.append(self.face_detection(frames[detection_freq * idx], backend, use_larger_box, larger_box_coef))
+                coor = self.face_detection(frames[detection_freq * idx], backend, coor, use_larger_box, larger_box_coef)
+                face_region_all.append(coor)
             else:
                 face_region_all.append([0, 0, frames.shape[1], frames.shape[2]])
         face_region_all = np.asarray(face_region_all, dtype='int')
@@ -567,7 +585,7 @@ class BaseLoader(Dataset):
             count += 1
         return input_path_name_list
 
-    def multi_process_manager(self, data_dirs, config_preprocess, multi_process_quota=4):
+    def multi_process_manager(self, data_dirs, config_preprocess, multi_process_quota=8):
         """Allocate dataset preprocessing across multiple processes.
 
         Args:
@@ -614,7 +632,7 @@ class BaseLoader(Dataset):
 
         return file_list_dict
 
-    def pose_lum_multi_process_manager(self, data_dirs, config_preprocess, multi_process_quota=4):
+    def pose_lum_multi_process_manager(self, data_dirs, config_preprocess, multi_process_quota=8):
         """Allocate dataset preprocessing across multiple processes.
 
         Args:
@@ -637,27 +655,31 @@ class BaseLoader(Dataset):
 
         # in range of number of files to process
         for i in choose_range:
-            process_flag = True
-            while process_flag:  # ensure that every i creates a process
-                if running_num < multi_process_quota:  # in case of too many processes
-                    # send data to be preprocessing task
-                    p = Process(target=self.pose_lum_preprocess_dataset_subprocess, 
-                                args=(data_dirs,config_preprocess, i, file_list_dict))
-                    p.start()
-                    p_list.append(p)
-                    running_num += 1
-                    process_flag = False
-                for p_ in p_list:
-                    if not p_.is_alive():
-                        p_list.remove(p_)
-                        p_.join()
-                        running_num -= 1
-                        pbar.update(1)
+            print(f"Starting file {i}")
+            self.pose_lum_preprocess_dataset_subprocess(data_dirs,config_preprocess, i, file_list_dict)
+            if False:
+                process_flag = True
+                while process_flag:  # ensure that every i creates a process
+                    if running_num < multi_process_quota:  # in case of too many processes
+                        # send data to be preprocessing task
+                        p = Process(target=self.pose_lum_preprocess_dataset_subprocess, 
+                                    args=(data_dirs,config_preprocess, i, file_list_dict))
+                        p.start()
+                        p_list.append(p)
+                        running_num += 1
+                        process_flag = False
+                    for p_ in p_list:
+                        if not p_.is_alive():
+                            p_list.remove(p_)
+                            p_.join()
+                            running_num -= 1
+                            pbar.update(1)
         # join all processes
-        for p_ in p_list:
-            p_.join()
-            pbar.update(1)
-        pbar.close()
+        if False:
+            for p_ in p_list:
+                p_.join()
+                pbar.update(1)
+            pbar.close()
 
         return file_list_dict
 
@@ -707,7 +729,7 @@ class BaseLoader(Dataset):
         # generate a list of all preprocessed / chunked data files
         file_list = []
         for fname in filename_list:
-            processed_file_data = list(glob.glob(self.cached_path + os.sep + "{0}_input*.npy".format(fname)))
+            processed_file_data = list(glob.glob(self.cached_path + os.sep + "{0}_input*[0-9].npy".format(fname)))
             file_list += processed_file_data
 
         if not file_list:

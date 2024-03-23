@@ -203,6 +203,42 @@ class MMPDLoader(BaseLoader):
         self.inputs = inputs
         self.labels = labels
         self.preprocessed_data_len = len(inputs)
+    
+    def build_file_list_retroactive(self, data_dirs, begin, end):
+        """ If a file list has not already been generated for a specific data split build a list of files 
+        used by the dataloader for the data split. Eg. list of files used for 
+        train / val / test. Also saves the list to a .csv file.
+
+        Args:
+            data_dirs(List[str]): a list of video_files.
+            begin(float): index of begining during train/val split.
+            end(float): index of ending during train/val split.
+        Returns:
+            None (this function does save a file-list .csv file to self.file_list_path)
+        """
+
+        # get data split based on begin and end indices.
+        data_dirs_subset = self.split_raw_data(data_dirs, begin, end)
+
+        # generate a list of unique raw-data file names
+        filename_list = []
+        for i in range(len(data_dirs_subset)):
+            filename_list.append(data_dirs_subset[i]['index'])
+        filename_list = list(set(filename_list))  # ensure all indexes are unique
+
+        # generate a list of all preprocessed / chunked data files
+        file_list = []
+        for fname in filename_list:
+            processed_file_data = list(glob.glob(self.cached_path + os.sep + "subject{0}_*_input*[0-9].npy".format(fname)))
+            file_list += processed_file_data
+
+        if not file_list:
+            raise ValueError(self.dataset_name,
+                             'File list empty. Check preprocessed data folder exists and is not empty.')
+
+        file_list_df = pd.DataFrame(file_list, columns=['input_files'])
+        os.makedirs(os.path.dirname(self.file_list_path), exist_ok=True)
+        file_list_df.to_csv(self.file_list_path)
 
     @staticmethod
     def get_information(information):
