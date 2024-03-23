@@ -55,10 +55,6 @@ class HeadPoseEstimator:
                     poses.append(cur_pose)
                     continue
 
-                if x1 == x2 or y1 == y2:
-                    poses.append(cur_pose)
-                    continue
-
                 # Run the mark detection.
                 marks = self.mark_detector.detect([patch])[0].reshape([68, 2])
 
