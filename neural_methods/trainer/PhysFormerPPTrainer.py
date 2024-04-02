@@ -198,7 +198,7 @@ class PhysFormerPPTrainer(BaseTrainer):
             for val_idx, val_batch in enumerate(vbar):
                 data, label = val_batch[0].float().to(self.device), val_batch[1].float().to(self.device)
                 gra_sharp = 2.0
-                rPPG, _, _, _ = self.model(data, gra_sharp)
+                rPPG, _ = self.model(data, gra_sharp)
                 rPPG = (rPPG-torch.mean(rPPG, axis=-1).view(-1, 1))/torch.std(rPPG).view(-1, 1)
                 for _1, _2 in zip(rPPG, label):
                     hrs.append((self.get_hr(_1.cpu().detach().numpy()), self.get_hr(_2.cpu().detach().numpy())))
@@ -244,7 +244,7 @@ class PhysFormerPPTrainer(BaseTrainer):
                 data, label = test_batch[0].to(
                     self.config.DEVICE), test_batch[1].to(self.config.DEVICE)
                 gra_sharp = 2.0
-                pred_ppg_test, _, _, _ = self.model(data, gra_sharp)
+                pred_ppg_test, _ = self.model(data, gra_sharp)
                 for idx in range(batch_size):
                     subj_index = test_batch[2][idx]
                     sort_index = int(test_batch[3][idx])

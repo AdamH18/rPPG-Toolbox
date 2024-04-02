@@ -146,6 +146,11 @@ if __name__ == "__main__":
     print('Configuration:')
     print(config, end='\n\n')
 
+    if config.MODEL.NAME == "Motion":
+        model = config.MODEL.MOVEMENT_BASE
+    else:
+        model = config.MODEL.NAME
+
     data_loader_dict = dict() # dictionary of data loaders 
     if config.TOOLBOX_MODE == "train_and_test" or config.TOOLBOX_MODE == "preprocess":
         # train_loader
@@ -185,7 +190,7 @@ if __name__ == "__main__":
                     raw_data_paths=config.TRAIN.DATA.MULTI_PATH,
                     config_data=config.TRAIN.DATA,
                     sec_pre=config.MODEL.SECONDARY_PREPROCESS,
-                    model=config.MODEL.NAME
+                    model=model
                 )
             else:
                 train_data_loader = train_loader(
@@ -193,7 +198,7 @@ if __name__ == "__main__":
                     data_path=config.TRAIN.DATA.DATA_PATH,
                     config_data=config.TRAIN.DATA,
                     sec_pre=config.MODEL.SECONDARY_PREPROCESS,
-                    model=config.MODEL.NAME)
+                    model=model)
             data_loader_dict['train'] = DataLoader(
                 dataset=train_data_loader,
                 num_workers=16,
@@ -247,7 +252,7 @@ if __name__ == "__main__":
                     raw_data_paths=config.VALID.DATA.MULTI_PATH,
                     config_data=config.VALID.DATA,
                     sec_pre=config.MODEL.SECONDARY_PREPROCESS,
-                    model=config.MODEL.NAME
+                    model=model
                 )
             else:
                 valid_data = valid_loader(
@@ -255,7 +260,7 @@ if __name__ == "__main__":
                     data_path=config.VALID.DATA.DATA_PATH,
                     config_data=config.VALID.DATA,
                     sec_pre=config.MODEL.SECONDARY_PREPROCESS,
-                    model=config.MODEL.NAME)
+                    model=model)
             data_loader_dict["valid"] = DataLoader(
                 dataset=valid_data,
                 num_workers=16,
@@ -308,7 +313,7 @@ if __name__ == "__main__":
                     raw_data_paths=config.TEST.DATA.MULTI_PATH,
                     config_data=config.TEST.DATA,
                     sec_pre=config.MODEL.SECONDARY_PREPROCESS,
-                    model=config.MODEL.NAME
+                    model=model
                 )
             else:
                 test_data = test_loader(
@@ -316,7 +321,7 @@ if __name__ == "__main__":
                     data_path=config.TEST.DATA.DATA_PATH,
                     config_data=config.TEST.DATA,
                     sec_pre=config.MODEL.SECONDARY_PREPROCESS,
-                    model=config.MODEL.NAME)
+                    model=model)
             data_loader_dict["test"] = DataLoader(
                 dataset=test_data,
                 num_workers=16,
@@ -361,7 +366,7 @@ if __name__ == "__main__":
                     raw_data_paths=config.UNSUPERVISED.DATA.MULTI_PATH,
                     config_data=config.UNSUPERVISED.DATA,
                     sec_pre=config.MODEL.SECONDARY_PREPROCESS,
-                    model=config.MODEL.NAME
+                    model=model
                 )
         else:
             unsupervised_data = unsupervised_loader(
@@ -369,7 +374,7 @@ if __name__ == "__main__":
                 data_path=config.UNSUPERVISED.DATA.DATA_PATH,
                 config_data=config.UNSUPERVISED.DATA,
                 sec_pre=config.MODEL.SECONDARY_PREPROCESS,
-                model=config.MODEL.NAME)
+                model=model)
         data_loader_dict["unsupervised"] = DataLoader(
             dataset=unsupervised_data,
             num_workers=16,
