@@ -45,16 +45,43 @@ def _reform_data_from_dict(data, flatten=True):
 
 DIFF_ON_SEC = ["DeepPhys"]
 
+def _moving(name, dataset):
+    if dataset not in ["PURE", "VICARPPG2", "MMPD"]:
+        return False
+    if dataset == "PURE":
+        val = int(name[-1])
+        if val < 3:
+            return False
+        return True
+    if dataset == "VICARPPG2":
+        val = name[3:]
+        if val == "mov":
+            return True
+        return False
+    if dataset == "MMPD":
+        info = name.split('_')
+        val = int(info[2][-1])
+        if val == 2 or val == 4:
+            return True
+        return False
+
 def calculate_metrics(predictions, labels, config):
     """Calculate rPPG Metrics (MAE, RMSE, MAPE, Pearson Coef.)."""
     predict_hr_fft_all = list()
     gt_hr_fft_all = list()
+    predict_hr_fft_mov = list()
+    gt_hr_fft_mov = list()
+    predict_hr_fft_no_mov = list()
+    gt_hr_fft_no_mov = list()
     predict_hr_peak_all = list()
     gt_hr_peak_all = list()
     SNR_all = list()
     dtws = list()
+    dtws_mov = list()
+    dtws_no_mov = list()
     print("Calculating metrics!")
     for index in tqdm(predictions.keys(), ncols=80):
+        is_mov = _moving(index, config.TEST.DATA.DATASET)
         prediction = _reform_data_from_dict(predictions[index])
         label = _reform_data_from_dict(labels[index])
 
@@ -93,6 +120,12 @@ def calculate_metrics(predictions, labels, config):
                     pred_window, label_window, diff_flag=diff_flag_test, fs=config.TEST.DATA.FS, hr_method='FFT')
                 gt_hr_fft_all.append(gt_hr_fft)
                 predict_hr_fft_all.append(pred_hr_fft)
+                if is_mov:
+                    gt_hr_fft_mov.append(gt_hr_fft)
+                    predict_hr_fft_mov.append(pred_hr_fft)
+                else:
+                    gt_hr_fft_no_mov.append(gt_hr_fft)
+                    predict_hr_fft_no_mov.append(pred_hr_fft)
                 SNR_all.append(SNR)
             else:
                 raise ValueError("Inference evaluation method name wrong!")
@@ -110,6 +143,10 @@ def calculate_metrics(predictions, labels, config):
                 standardized_label = (label_window - np.mean(label_window)) / np.std(label_window)
                 dist, _ = fastdtw(standardized_label, standardized_pred, dist=euclidean)
                 dtws.append(dist / window_frame_size)
+                if is_mov:
+                    dtws_mov.append(dist / window_frame_size)
+                else:
+                    dtws_no_mov.append(dist / window_frame_size)
     
     # Filename ID to be used in any results files (e.g., Bland-Altman plots) that get saved
     if config.TOOLBOX_MODE == 'train_and_test':
@@ -122,19 +159,42 @@ def calculate_metrics(predictions, labels, config):
 
     if config.INFERENCE.EVALUATION_METHOD == "FFT":
         gt_hr_fft_all = np.array(gt_hr_fft_all)
+        gt_hr_fft_mov = np.array(gt_hr_fft_mov)
+        gt_hr_fft_no_mov = np.array(gt_hr_fft_no_mov)
         predict_hr_fft_all = np.array(predict_hr_fft_all)
+        predict_hr_fft_mov = np.array(predict_hr_fft_mov)
+        predict_hr_fft_no_mov = np.array(predict_hr_fft_no_mov)
         SNR_all = np.array(SNR_all)
         dtws = np.array(dtws)
+        dtws_mov = np.array(dtws_mov)
+        dtws_no_mov = np.array(dtws_no_mov)
         num_test_samples = len(predict_hr_fft_all)
+        num_mov_samples = len(predict_hr_fft_mov)
+        num_no_mov_samples = len(predict_hr_fft_no_mov)
+        do_split = num_mov_samples > 0 and num_no_mov_samples > 0
         for metric in config.TEST.METRICS:
             if metric == "MAE":
                 MAE_FFT = np.mean(np.abs(predict_hr_fft_all - gt_hr_fft_all))
                 standard_error = np.std(np.abs(predict_hr_fft_all - gt_hr_fft_all)) / np.sqrt(num_test_samples)
                 print("FFT MAE (FFT Label): {0} +/- {1}".format(MAE_FFT, standard_error))
+                if do_split:
+                    MAE_FFT = np.mean(np.abs(predict_hr_fft_mov - gt_hr_fft_mov))
+                    standard_error = np.std(np.abs(predict_hr_fft_mov - gt_hr_fft_mov)) / np.sqrt(num_mov_samples)
+                    print("FFT MAE Movement: {0} +/- {1}".format(MAE_FFT, standard_error))
+                    MAE_FFT = np.mean(np.abs(predict_hr_fft_no_mov - gt_hr_fft_no_mov))
+                    standard_error = np.std(np.abs(predict_hr_fft_no_mov - gt_hr_fft_no_mov)) / np.sqrt(num_no_mov_samples)
+                    print("FFT MAE Still: {0} +/- {1}".format(MAE_FFT, standard_error))
             elif metric == "RMSE":
                 RMSE_FFT = np.sqrt(np.mean(np.square(predict_hr_fft_all - gt_hr_fft_all)))
                 standard_error = np.std(np.square(predict_hr_fft_all - gt_hr_fft_all)) / np.sqrt(num_test_samples)
                 print("FFT RMSE (FFT Label): {0} +/- {1}".format(RMSE_FFT, standard_error))
+                if do_split:
+                    RMSE_FFT = np.sqrt(np.mean(np.square(predict_hr_fft_mov - gt_hr_fft_mov)))
+                    standard_error = np.std(np.square(predict_hr_fft_mov - gt_hr_fft_mov)) / np.sqrt(num_mov_samples)
+                    print("FFT RMSE Movement: {0} +/- {1}".format(RMSE_FFT, standard_error))
+                    RMSE_FFT = np.sqrt(np.mean(np.square(predict_hr_fft_no_mov - gt_hr_fft_no_mov)))
+                    standard_error = np.std(np.square(predict_hr_fft_no_mov - gt_hr_fft_no_mov)) / np.sqrt(num_no_mov_samples)
+                    print("FFT RMSE Still: {0} +/- {1}".format(RMSE_FFT, standard_error))
             elif metric == "MAPE":
                 MAPE_FFT = np.mean(np.abs((predict_hr_fft_all - gt_hr_fft_all) / gt_hr_fft_all)) * 100
                 standard_error = np.std(np.abs((predict_hr_fft_all - gt_hr_fft_all) / gt_hr_fft_all)) / np.sqrt(num_test_samples) * 100
@@ -144,6 +204,15 @@ def calculate_metrics(predictions, labels, config):
                 correlation_coefficient = Pearson_FFT[0][1]
                 standard_error = np.sqrt((1 - correlation_coefficient**2) / (num_test_samples - 2))
                 print("FFT Pearson (FFT Label): {0} +/- {1}".format(correlation_coefficient, standard_error))
+                if do_split:
+                    Pearson_FFT = np.corrcoef(predict_hr_fft_mov, gt_hr_fft_mov)
+                    correlation_coefficient = Pearson_FFT[0][1]
+                    standard_error = np.sqrt((1 - correlation_coefficient**2) / (num_mov_samples - 2))
+                    print("FFT Pearson Movement: {0} +/- {1}".format(correlation_coefficient, standard_error))
+                    Pearson_FFT = np.corrcoef(predict_hr_fft_no_mov, gt_hr_fft_no_mov)
+                    correlation_coefficient = Pearson_FFT[0][1]
+                    standard_error = np.sqrt((1 - correlation_coefficient**2) / (num_no_mov_samples - 2))
+                    print("FFT Pearson Still: {0} +/- {1}".format(correlation_coefficient, standard_error))
             elif metric == "SNR":
                 SNR_FFT = np.mean(SNR_all)
                 standard_error = np.std(SNR_all) / np.sqrt(num_test_samples)
@@ -152,6 +221,13 @@ def calculate_metrics(predictions, labels, config):
                 DTW = np.mean(dtws)
                 standard_error = np.std(dtws) / np.sqrt(num_test_samples)
                 print("DTW (Signal Distance): {0} +/- {1}".format(DTW, standard_error))
+                if do_split:
+                    DTW = np.mean(dtws_mov)
+                    standard_error = np.std(dtws_mov) / np.sqrt(num_mov_samples)
+                    print("DTW Movement: {0} +/- {1}".format(DTW, standard_error))
+                    DTW = np.mean(dtws_no_mov)
+                    standard_error = np.std(dtws_no_mov) / np.sqrt(num_no_mov_samples)
+                    print("DTW Still: {0} +/- {1}".format(DTW, standard_error))
             elif "AU" in metric:
                 pass
             elif "BA" in metric:  

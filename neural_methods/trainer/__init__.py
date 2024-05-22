@@ -7,3 +7,5 @@ import neural_methods.trainer.BigSmallTrainer
 import neural_methods.trainer.PhysFormerTrainer
 import neural_methods.trainer.PhysFormerPPTrainer
 import neural_methods.trainer.APNETTrainer
+import neural_methods.trainer.MotionTrainer
+import neural_methods.trainer.MotionDeepPhysTrainer

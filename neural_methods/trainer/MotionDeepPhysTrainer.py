@@ -9,12 +9,12 @@ import torch
 import torch.optim as optim
 from evaluation.metrics import calculate_metrics
 from neural_methods.loss.NegPearsonLoss import Neg_Pearson
-from neural_methods.model.DeepPhys import DeepPhys
+from neural_methods.model.MotionDeepPhys import MotionDeepPhys
 from neural_methods.trainer.BaseTrainer import BaseTrainer
 from tqdm import tqdm
 
 
-class DeepPhysTrainer(BaseTrainer):
+class MotionDeepPhysTrainer(BaseTrainer):
 
     def __init__(self, config, data_loader):
         """Inits parameters from args and the writer for TensorboardX."""
@@ -31,7 +31,7 @@ class DeepPhysTrainer(BaseTrainer):
         self.sec_pre = config.MODEL.SECONDARY_PREPROCESS
         
         if config.TOOLBOX_MODE == "train_and_test":
-            self.model = DeepPhys(img_size=72, sec_pre=self.sec_pre).to(self.device)
+            self.model = MotionDeepPhys(img_size=72, sec_pre=self.sec_pre).to(self.device)
             self.model = torch.nn.DataParallel(self.model, device_ids=list(range(config.NUM_OF_GPU_TRAIN)))
 
             self.num_train_batches = len(data_loader["train"])
@@ -42,7 +42,7 @@ class DeepPhysTrainer(BaseTrainer):
             self.scheduler = torch.optim.lr_scheduler.OneCycleLR(
                 self.optimizer, max_lr=config.TRAIN.LR, epochs=config.TRAIN.EPOCHS, steps_per_epoch=self.num_train_batches)
         elif config.TOOLBOX_MODE == "only_test":
-            self.model = DeepPhys(img_size=config.TEST.DATA.PREPROCESS.RESIZE.H, sec_pre=self.sec_pre).to(self.device)
+            self.model = MotionDeepPhys(img_size=config.TEST.DATA.PREPROCESS.RESIZE.H, sec_pre=self.sec_pre).to(self.device)
             self.model = torch.nn.DataParallel(self.model, device_ids=list(range(config.NUM_OF_GPU_TRAIN)))
         else:
             raise ValueError("DeepPhys trainer initialized in incorrect toolbox mode!")
@@ -71,7 +71,9 @@ class DeepPhysTrainer(BaseTrainer):
                 data = data.view(N * D, C, H, W)
                 labels = labels.view(-1, 1)
                 self.optimizer.zero_grad()
-                pred_ppg = self.model(data)
+                motion = self.get_motion_data(batch[4])
+                motion_inputs = self.create_inputs(motion).to(self.device)
+                pred_ppg = self.model(data, motion_inputs)
                 loss = self.criterion(pred_ppg, labels)
                 loss.backward()
 
@@ -104,9 +106,6 @@ class DeepPhysTrainer(BaseTrainer):
                     self.min_valid_loss = valid_loss
                     self.best_epoch = epoch
                     print("Update best model! Best epoch: {}".format(self.best_epoch))
-                elif epoch > self.best_epoch+10:
-                    print("No improvement for 10 epochs, stopping early")
-                    break
         if not self.config.TEST.USE_LAST_EPOCH: 
             print("best trained epoch: {}, min_val_loss: {}".format(self.best_epoch, self.min_valid_loss))
         if self.config.TRAIN.PLOT_LOSSES_AND_LR:
@@ -131,7 +130,9 @@ class DeepPhysTrainer(BaseTrainer):
                 N, D, C, H, W = data_valid.shape
                 data_valid = data_valid.view(N * D, C, H, W)
                 labels_valid = labels_valid.view(-1, 1)
-                pred_ppg_valid = self.model(data_valid)
+                motion = self.get_motion_data(valid_batch[4])
+                motion_inputs = self.create_inputs(motion).to(self.device)
+                pred_ppg_valid = self.model(data_valid, motion_inputs)
                 loss = self.criterion(pred_ppg_valid, labels_valid)
                 valid_loss.append(loss.item())
                 valid_step += 1
@@ -179,7 +180,9 @@ class DeepPhysTrainer(BaseTrainer):
                 N, D, C, H, W = data_test.shape
                 data_test = data_test.view(N * D, C, H, W)
                 labels_test = labels_test.view(-1, 1)
-                pred_ppg_test = self.model(data_test)
+                motion = self.get_motion_data(test_batch[4])
+                motion_inputs = self.create_inputs(motion).to(self.device)
+                pred_ppg_test = self.model(data_test, motion_inputs)
 
                 if self.config.TEST.OUTPUT_SAVE_DIR:
                     labels_test = labels_test.cpu()
@@ -207,4 +210,50 @@ class DeepPhysTrainer(BaseTrainer):
             self.model_dir, self.model_file_name + '_Epoch' + str(index) + '.pth')
         torch.save(self.model.state_dict(), model_path)
         print('Saved Model Path: ', model_path)
+    
+    @staticmethod
+    def get_motion_data(files):
+        data = []
+        for file in files:
+            fname = f"{file.split('.')[0]}_pl.npy"
+            data.append(np.load(fname))
+        return torch.Tensor(data)
+
+    @staticmethod
+    def create_inputs(motion):
+        movement = MotionDeepPhysTrainer.diff_normalize_data(motion[:, :, :3])
+        pose = MotionDeepPhysTrainer.standardized_data(motion[:, :, 3:6])
+        luminance = MotionDeepPhysTrainer.standardized_data(motion[:, :, 6].view((motion.shape[0], motion.shape[1], 1)))
+        return torch.concat((movement, pose, luminance), dim=2)
+    
+    @staticmethod
+    def diff_normalize_data(data):
+        """Calculate discrete difference in video data along the time-axis and nornamize by its standard deviation."""
+        n, t, c = data.shape
+        tensors = []
+        for i in range(n):
+            data_i = np.array(data[i])
+            diffnormalized_len = t - 1
+            diffnormalized_data = np.zeros((diffnormalized_len, c), dtype=np.float32)
+            diffnormalized_data_padding = np.zeros((1, c), dtype=np.float32)
+            for j in range(diffnormalized_len):
+                diffnormalized_data[j, :] = (data_i[j + 1, :] - data_i[j, :]) / (
+                        data_i[j + 1, :] + data_i[j, :] + 1e-7)
+            diffnormalized_data = diffnormalized_data / np.std(diffnormalized_data)
+            diffnormalized_data = np.append(diffnormalized_data, diffnormalized_data_padding, axis=0)
+            diffnormalized_data[np.isnan(diffnormalized_data)] = 0
+            tensors.append(diffnormalized_data)
+        return torch.Tensor(tensors)
+
+    @staticmethod
+    def standardized_data(data):
+        """Z-score standardization for video data."""
+        tensors = []
+        for i in range(data.shape[0]):
+            data_i = np.array(data[i])
+            data_i = data_i - np.mean(data_i)
+            data_i = data_i / np.std(data_i)
+            data_i[np.isnan(data_i)] = 0
+            tensors.append(data_i)
+        return torch.Tensor(tensors)
  

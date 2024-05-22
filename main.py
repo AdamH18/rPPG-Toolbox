@@ -80,6 +80,10 @@ def train_and_test(config, data_loader_dict):
         model_trainer = trainer.PhysFormerPPTrainer.PhysFormerPPTrainer(config, data_loader_dict)
     elif config.MODEL.NAME == 'APNET':
         model_trainer = trainer.APNETTrainer.APNETTrainer(config, data_loader_dict)
+    elif config.MODEL.NAME == 'Motion':
+        model_trainer = trainer.MotionTrainer.MotionTrainer(config, data_loader_dict)
+    elif config.MODEL.NAME == 'MotionDeepPhys':
+        model_trainer = trainer.MotionDeepPhysTrainer.MotionDeepPhysTrainer(config, data_loader_dict)
     else:
         raise ValueError('Your Model is Not Supported  Yet!')
     model_trainer.train(data_loader_dict)
@@ -104,6 +108,10 @@ def test(config, data_loader_dict):
         model_trainer = trainer.PhysFormerPPTrainer.PhysFormerPPTrainer(config, data_loader_dict)
     elif config.MODEL.NAME == 'APNET':
         model_trainer = trainer.APNETTrainer.APNETTrainer(config, data_loader_dict)
+    elif config.MODEL.NAME == 'Motion':
+        model_trainer = trainer.MotionTrainer.MotionTrainer(config, data_loader_dict)
+    elif config.MODEL.NAME == 'MotionDeepPhys':
+        model_trainer = trainer.MotionDeepPhysTrainer.MotionDeepPhysTrainer(config, data_loader_dict)
     else:
         raise ValueError('Your Model is Not Supported  Yet!')
     model_trainer.test(data_loader_dict)

@@ -32,6 +32,11 @@ MODEL_SECONDARY_PROCESSING_PRESETS = {
         ["DiffNorm", "Standard"], #List of data transforms to include
         True #Label transform from standardized to diffnorm
     ],
+    "MotionDeepPhys": [
+        (72, 72), #Resize image size
+        ["DiffNorm", "Standard"], #List of data transforms to include
+        True #Label transform from standardized to diffnorm
+    ],
     "PhysFormer": [
         (128, 128), #Resize image size
         ["Standard"], #List of data transforms to include
@@ -178,7 +183,7 @@ class BaseLoader(Dataset):
         # chunk_id is the extracted, numeric chunk identifier. Following the previous comments, 
         # the chunk_id for example would be 0
         chunk_id = item_path_filename[split_idx + 6:].split('.')[0]
-        return data, label, filename, chunk_id
+        return data, label, filename, chunk_id, self.inputs[index]
 
     def get_raw_data(self, raw_data_path):
         """Returns raw data directories under the path.

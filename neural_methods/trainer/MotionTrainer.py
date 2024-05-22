@@ -10,7 +10,10 @@ import torch.optim as optim
 from evaluation.metrics import calculate_metrics
 from neural_methods.loss.NegPearsonLoss import Neg_Pearson
 from neural_methods.trainer.BaseTrainer import BaseTrainer
-from neural_methods.model.MotionNet import MotionNet
+from neural_methods.model.MotionNet import MotionNet as MN1
+from neural_methods.model.MotionNet2 import MotionNet as MN2
+from neural_methods.model.MotionNet3 import MotionNet as MN3
+from neural_methods.model.MotionNet4 import MotionNet as MN4
 from neural_methods.model.PhysNet import PhysNet_padding_Encoder_Decoder_MAX
 from neural_methods.model.TS_CAN import TSCAN
 from neural_methods.model.EfficientPhys import EfficientPhys
@@ -29,6 +32,7 @@ class MotionTrainer(BaseTrainer):
         self.device = torch.device(config.DEVICE)
         self.max_epoch_num = config.TRAIN.EPOCHS
         self.model_dir = config.MODEL.MODEL_DIR
+        self.dropout_rate = config.MODEL.DROP_RATE
         self.model_file_name = config.TRAIN.MODEL_FILE_NAME
         self.batch_size = config.TRAIN.BATCH_SIZE
         self.chunk_len = config.TRAIN.DATA.PREPROCESS.CHUNK_LENGTH
@@ -46,27 +50,39 @@ class MotionTrainer(BaseTrainer):
             self.frame_depth = config.MODEL.TSCAN.FRAME_DEPTH
         elif self.base_model_type == "EfficientPhys":
             self.base_model = EfficientPhys(config.MODEL.EFFICIENTPHYS.FRAME_DEPTH, img_size=72).to(self.device)
+            self.base_model = torch.nn.DataParallel(self.base_model, device_ids=list(range(config.NUM_OF_GPU_TRAIN)))
             self.frame_depth = config.MODEL.EFFICIENTPHYS.FRAME_DEPTH
         elif self.base_model_type == "DeepPhys":
             self.base_model = DeepPhys(img_size=72, sec_pre=self.sec_pre).to(self.device)
+            self.base_model = torch.nn.DataParallel(self.base_model, device_ids=list(range(config.NUM_OF_GPU_TRAIN)))
         elif self.base_model_type == "PhysFormer":
             self.base_model = ViT_ST_ST_Compact3_TDC_gra_sharp(
                             image_size=(self.chunk_len,128,128), 
-                            patches=(self.patch_size,) * 3, dim=self.dim, ff_dim=self.ff_dim, num_heads=self.num_heads, num_layers=self.num_layers, 
-                            dropout_rate=self.dropout_rate, theta=self.theta).to(self.device)
+                            patches=(config.MODEL.PHYSFORMER.PATCH_SIZE,) * 3, dim=config.MODEL.PHYSFORMER.DIM, ff_dim=config.MODEL.PHYSFORMER.FF_DIM, num_heads=config.MODEL.PHYSFORMER.NUM_HEADS, num_layers=config.MODEL.PHYSFORMER.NUM_LAYERS, 
+                            dropout_rate=self.dropout_rate, theta=config.MODEL.PHYSFORMER.THETA).to(self.device)
         elif self.base_model_type == "PhysFormerPP":
             self.base_model = ViT_ST_ST_Compact3_TDC_PP_gra_sharp(
                             image_size=(self.chunk_len,128,128), 
-                            patches=(self.patch_size,) * 3, dim=self.dim, ff_dim=self.ff_dim, num_heads=self.num_heads, num_layers=self.num_layers, 
-                            dropout_rate=self.dropout_rate, theta=self.theta, frame=config.TRAIN.DATA.PREPROCESS.CHUNK_LENGTH).to(self.device)
+                            patches=(config.MODEL.PHYSFORMER.PATCH_SIZE,) * 3, dim=config.MODEL.PHYSFORMER.DIM, ff_dim=config.MODEL.PHYSFORMER.FF_DIM, num_heads=config.MODEL.PHYSFORMER.NUM_HEADS, num_layers=config.MODEL.PHYSFORMER.NUM_LAYERS, 
+                            dropout_rate=self.dropout_rate, theta=config.MODEL.PHYSFORMER.THETA, frame=config.TRAIN.DATA.PREPROCESS.CHUNK_LENGTH).to(self.device)
         elif self.base_model_type == "APNET":
             self.base_model = APNET(hwDim=128, tDim=config.TRAIN.DATA.PREPROCESS.CHUNK_LENGTH, dropout=config.MODEL.DROP_RATE).to(self.device)
-            
-        self.base_model.load_state_dict(torch.load(self.base_model_loc))
+        
+        state_dict = torch.load(self.base_model_loc)
+        #remove_prefix = 'module.'
+        #state_dict = {k[len(remove_prefix):] if k.startswith(remove_prefix) else k: v for k, v in state_dict.items()}
+        self.base_model.load_state_dict(state_dict)
         self.base_model.eval()
         
         if config.TOOLBOX_MODE == "train_and_test":
-            self.model = MotionNet().to(self.device)
+            if config.MODEL.MOVEMENT_VER == 1:
+                self.model = MN1(self.dropout_rate).to(self.device)
+            elif config.MODEL.MOVEMENT_VER == 2:
+                self.model = MN2(self.dropout_rate).to(self.device)
+            elif config.MODEL.MOVEMENT_VER == 3:
+                self.model = MN3(self.dropout_rate).to(self.device)
+            elif config.MODEL.MOVEMENT_VER == 4:
+                self.model = MN4(self.dropout_rate).to(self.device)
             self.model = torch.nn.DataParallel(self.model, device_ids=list(range(config.NUM_OF_GPU_TRAIN)))
 
             self.num_train_batches = len(data_loader["train"])
@@ -77,7 +93,14 @@ class MotionTrainer(BaseTrainer):
             self.scheduler = torch.optim.lr_scheduler.OneCycleLR(
                 self.optimizer, max_lr=config.TRAIN.LR, epochs=config.TRAIN.EPOCHS, steps_per_epoch=self.num_train_batches)
         elif config.TOOLBOX_MODE == "only_test":
-            self.model = MotionNet().to(self.device)
+            if config.MODEL.MOVEMENT_VER == 1:
+                self.model = MN1(self.dropout_rate).to(self.device)
+            elif config.MODEL.MOVEMENT_VER == 2:
+                self.model = MN2(self.dropout_rate).to(self.device)
+            elif config.MODEL.MOVEMENT_VER == 3:
+                self.model = MN3(self.dropout_rate).to(self.device)
+            elif config.MODEL.MOVEMENT_VER == 4:
+                self.model = MN4(self.dropout_rate).to(self.device)
             self.model = torch.nn.DataParallel(self.model, device_ids=list(range(config.NUM_OF_GPU_TRAIN)))
         else:
             raise ValueError("DeepPhys trainer initialized in incorrect toolbox mode!")
@@ -97,25 +120,29 @@ class MotionTrainer(BaseTrainer):
                 N, D, C, H, W = data.shape
                 data = data.view(N * D, C, H, W)
                 data = data[:(N * D) // self.frame_depth * self.frame_depth]
-                last_frame = torch.unsqueeze(data[-1, :, :, :], 0).repeat(self.num_of_gpu, 1, 1, 1)
+                last_frame = torch.unsqueeze(data[-1, :, :, :], 0).repeat(1, 1, 1, 1)
                 data = torch.cat((data, last_frame), 0)
                 pred_ppg_test = self.base_model(data)
-                return pred_ppg_test
+                if pred_ppg_test.shape[0] < N*D:
+                    new_pred = torch.zeros((N*D, 1)).to(self.device)
+                    new_pred[:pred_ppg_test.shape[0]] = pred_ppg_test
+                    pred_ppg_test = new_pred
+                return pred_ppg_test.view((N, D))
             elif self.base_model_type == "DeepPhys":
                 N, D, C, H, W = data.shape
                 data = data.view(N * D, C, H, W)
-                pred_ppg_test = self.model(data)
-                return pred_ppg_test
+                pred_ppg_test = self.base_model(data)
+                return pred_ppg_test.view((N, D))
             elif self.base_model_type == "PhysFormer":
                 gra_sharp = 2.0
-                pred_ppg_test, _, _, _ = self.model(data, gra_sharp)
+                pred_ppg_test, _, _, _ = self.base_model(data, gra_sharp)
                 return pred_ppg_test
             elif self.base_model_type == "PhysFormerPP":
                 gra_sharp = 2.0
-                pred_ppg_test, _ = self.model(data, gra_sharp)
+                pred_ppg_test, _ = self.base_model(data, gra_sharp)
                 return pred_ppg_test
             elif self.base_model_type == "APNET":
-                pred_ppg_test = self.model(data)
+                pred_ppg_test = self.base_model(data)
                 return pred_ppg_test
 
 
@@ -139,11 +166,13 @@ class MotionTrainer(BaseTrainer):
                 tbar.set_description("Train epoch %s" % epoch)
                 data, labels = batch[0].to(
                     self.device), batch[1].to(self.device)
-                N, D, C, H, W = data.shape
-                data = data.view(N * D, C, H, W)
+                base_rppg = self.base_model_run(data)
+                motion = self.get_motion_data(batch[4])
                 labels = labels.view(-1, 1)
                 self.optimizer.zero_grad()
-                pred_ppg = self.model(data)
+                motion_inputs = self.create_inputs(base_rppg.cpu(), motion).to(self.device)
+                pred_ppg = self.model(motion_inputs)
+                pred_ppg = pred_ppg.view(-1, 1)
                 loss = self.criterion(pred_ppg, labels)
                 loss.backward()
 
@@ -197,10 +226,12 @@ class MotionTrainer(BaseTrainer):
                 vbar.set_description("Validation")
                 data_valid, labels_valid = valid_batch[0].to(
                     self.device), valid_batch[1].to(self.device)
-                N, D, C, H, W = data_valid.shape
-                data_valid = data_valid.view(N * D, C, H, W)
+                base_rppg = self.base_model_run(data_valid)
+                motion = self.get_motion_data(valid_batch[4])
                 labels_valid = labels_valid.view(-1, 1)
-                pred_ppg_valid = self.model(data_valid)
+                motion_inputs = self.create_inputs(base_rppg.cpu(), motion).to(self.device)
+                pred_ppg_valid = self.model(motion_inputs)
+                pred_ppg_valid = pred_ppg_valid.view(-1, 1)
                 loss = self.criterion(pred_ppg_valid, labels_valid)
                 valid_loss.append(loss.item())
                 valid_step += 1
@@ -221,7 +252,8 @@ class MotionTrainer(BaseTrainer):
         if self.config.TOOLBOX_MODE == "only_test":
             if not os.path.exists(self.config.INFERENCE.MODEL_PATH):
                 raise ValueError("Inference model path error! Please check INFERENCE.MODEL_PATH in your yaml.")
-            self.model.load_state_dict(torch.load(self.config.INFERENCE.MODEL_PATH))
+            state_dict = torch.load(self.config.INFERENCE.MODEL_PATH)
+            self.model.load_state_dict(state_dict)
             print("Testing uses pretrained model!")
         else:
             if self.config.TEST.USE_LAST_EPOCH:
@@ -245,10 +277,12 @@ class MotionTrainer(BaseTrainer):
                 batch_size = test_batch[0].shape[0]
                 data_test, labels_test = test_batch[0].to(
                     self.config.DEVICE), test_batch[1].to(self.config.DEVICE)
-                N, D, C, H, W = data_test.shape
-                data_test = data_test.view(N * D, C, H, W)
+                base_rppg = self.base_model_run(data_test)
+                motion = self.get_motion_data(test_batch[4])
                 labels_test = labels_test.view(-1, 1)
-                pred_ppg_test = self.model(data_test)
+                motion_inputs = self.create_inputs(base_rppg.cpu(), motion).to(self.device)
+                pred_ppg_test = self.model(motion_inputs)
+                pred_ppg_test = pred_ppg_test.view(-1, 1)
 
                 if self.config.TEST.OUTPUT_SAVE_DIR:
                     labels_test = labels_test.cpu()
@@ -276,4 +310,51 @@ class MotionTrainer(BaseTrainer):
             self.model_dir, self.model_file_name + '_Epoch' + str(index) + '.pth')
         torch.save(self.model.state_dict(), model_path)
         print('Saved Model Path: ', model_path)
+    
+    @staticmethod
+    def get_motion_data(files):
+        data = []
+        for file in files:
+            fname = f"{file.split('.')[0]}_pl.npy"
+            data.append(np.load(fname))
+        return torch.Tensor(data)
+
+    @staticmethod
+    def create_inputs(rppg, motion):
+        movement = MotionTrainer.diff_normalize_data(motion[:, :, :3])
+        pose = MotionTrainer.standardized_data(motion[:, :, 3:6])
+        luminance = MotionTrainer.standardized_data(motion[:, :, 6].view((motion.shape[0], motion.shape[1], 1)))
+        rppg = torch.tensor(np.array(rppg.view((rppg.shape[0], rppg.shape[1], 1))))
+        return torch.concat((rppg, movement, pose, luminance), dim=2)
+    
+    @staticmethod
+    def diff_normalize_data(data):
+        """Calculate discrete difference in video data along the time-axis and nornamize by its standard deviation."""
+        n, t, c = data.shape
+        tensors = []
+        for i in range(n):
+            data_i = np.array(data[i])
+            diffnormalized_len = t - 1
+            diffnormalized_data = np.zeros((diffnormalized_len, c), dtype=np.float32)
+            diffnormalized_data_padding = np.zeros((1, c), dtype=np.float32)
+            for j in range(diffnormalized_len):
+                diffnormalized_data[j, :] = (data_i[j + 1, :] - data_i[j, :]) / (
+                        data_i[j + 1, :] + data_i[j, :] + 1e-7)
+            diffnormalized_data = diffnormalized_data / np.std(diffnormalized_data)
+            diffnormalized_data = np.append(diffnormalized_data, diffnormalized_data_padding, axis=0)
+            diffnormalized_data[np.isnan(diffnormalized_data)] = 0
+            tensors.append(diffnormalized_data)
+        return torch.Tensor(tensors)
+
+    @staticmethod
+    def standardized_data(data):
+        """Z-score standardization for video data."""
+        tensors = []
+        for i in range(data.shape[0]):
+            data_i = np.array(data[i])
+            data_i = data_i - np.mean(data_i)
+            data_i = data_i / np.std(data_i)
+            data_i[np.isnan(data_i)] = 0
+            tensors.append(data_i)
+        return torch.Tensor(tensors)
  

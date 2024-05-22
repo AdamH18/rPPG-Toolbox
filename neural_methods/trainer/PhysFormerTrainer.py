@@ -111,43 +111,44 @@ class PhysFormerTrainer(BaseTrainer):
                 rPPG = (rPPG-torch.mean(rPPG, axis=-1).view(-1, 1))/torch.std(rPPG, axis=-1).view(-1, 1)    # normalize
                 loss_rPPG = self.criterion_Pearson(rPPG, label)
 
-                fre_loss = 0.0
-                kl_loss = 0.0
-                train_mae = 0.0
-                for bb in range(data.shape[0]):
-                    loss_distribution_kl, \
-                    fre_loss_temp, \
-                    train_mae_temp = TorchLossComputer.cross_entropy_power_spectrum_DLDL_softmax2(
-                        rPPG[bb],
-                        hr[bb],
-                        self.frame_rate,
-                        std=1.0
-                    )
-                    fre_loss = fre_loss+fre_loss_temp
-                    kl_loss = kl_loss+loss_distribution_kl
-                    train_mae = train_mae+train_mae_temp
-                fre_loss /= data.shape[0]
-                kl_loss /= data.shape[0]
-                train_mae /= data.shape[0]
+                if False:
+                    fre_loss = 0.0
+                    kl_loss = 0.0
+                    train_mae = 0.0
+                    for bb in range(data.shape[0]):
+                        loss_distribution_kl, \
+                        fre_loss_temp, \
+                        train_mae_temp = TorchLossComputer.cross_entropy_power_spectrum_DLDL_softmax2(
+                            rPPG[bb],
+                            hr[bb],
+                            self.frame_rate,
+                            std=1.0
+                        )
+                        fre_loss = fre_loss+fre_loss_temp
+                        kl_loss = kl_loss+loss_distribution_kl
+                        train_mae = train_mae+train_mae_temp
+                    fre_loss /= data.shape[0]
+                    kl_loss /= data.shape[0]
+                    train_mae /= data.shape[0]
 
-                if epoch>10:
-                    a = 0.05
-                    b = 5.0
-                else:
-                    a = a_start
-                    # exp ascend
-                    b = b_start*math.pow(exp_b, epoch/10.0)
+                    if epoch>10:
+                        a = 0.05
+                        b = 5.0
+                    else:
+                        a = a_start
+                        # exp ascend
+                        b = b_start*math.pow(exp_b, epoch/10.0)
 
-                loss = a*loss_rPPG + b*(fre_loss+kl_loss)
+                loss = loss_rPPG#a*loss_rPPG + b*(fre_loss+kl_loss)
                 loss.backward()
                 self.optimizer.step()
 
                 n = data.size(0)
                 loss_rPPG_avg.append(float(loss_rPPG.data))
-                loss_peak_avg.append(float(fre_loss.data))
-                loss_kl_avg_test.append(float(kl_loss.data))
-                loss_hr_mae.append(float(train_mae))
-                if idx % 100 == 99:  # print every 100 mini-batches
+                #loss_peak_avg.append(float(fre_loss.data))
+                #loss_kl_avg_test.append(float(kl_loss.data))
+                #loss_hr_mae.append(float(train_mae))
+                if False:#idx % 100 == 99:  # print every 100 mini-batches
                     print(f'\nepoch:{epoch}, batch:{idx + 1}, total:{len(data_loader["train"]) // self.batch_size}, '
                         f'lr:0.0001, sharp:{gra_sharp:.3f}, a:{a:.3f}, NegPearson:{np.mean(loss_rPPG_avg[-2000:]):.4f}, '
                         f'\nb:{b:.3f}, kl:{np.mean(loss_kl_avg_test[-2000:]):.3f}, fre_CEloss:{np.mean(loss_peak_avg[-2000:]):.3f}, '
@@ -164,7 +165,7 @@ class PhysFormerTrainer(BaseTrainer):
             if not self.config.TEST.USE_LAST_EPOCH: 
                 valid_loss = self.valid(data_loader)
                 mean_valid_losses.append(valid_loss)
-                print(f'Validation RMSE:{valid_loss:.3f}, batch:{idx+1}')
+                print(f'Validation avg loss:{valid_loss:.3f}, batch:{idx+1}')
                 if self.min_valid_loss is None:
                     self.min_valid_loss = valid_loss
                     self.best_epoch = epoch
@@ -188,7 +189,7 @@ class PhysFormerTrainer(BaseTrainer):
         print(" ====Validating===")
         self.optimizer.zero_grad()
         with torch.no_grad():
-            hrs = []
+            losses = []
             vbar = tqdm(data_loader["valid"], ncols=80)
             for val_idx, val_batch in enumerate(vbar):
                 data, label = val_batch[0].float().to(self.device), val_batch[1].float().to(self.device)
@@ -196,9 +197,11 @@ class PhysFormerTrainer(BaseTrainer):
                 rPPG, _, _, _ = self.model(data, gra_sharp)
                 rPPG = (rPPG-torch.mean(rPPG, axis=-1).view(-1, 1))/torch.std(rPPG).view(-1, 1)
                 for _1, _2 in zip(rPPG, label):
-                    hrs.append((self.get_hr(_1.cpu().detach().numpy()), self.get_hr(_2.cpu().detach().numpy())))
-            RMSE = np.mean([(i-j)**2 for i, j in hrs])**0.5
-        return RMSE
+                    losses.append(float(self.criterion_Pearson(rPPG, label).data))
+                    #hrs.append((self.get_hr(_1.cpu().detach().numpy()), self.get_hr(_2.cpu().detach().numpy())))
+            #RMSE = np.mean([(i-j)**2 for i, j in hrs])**0.5
+            avg_loss = np.mean(losses)
+        return avg_loss#RMSE
 
     def test(self, data_loader):
         """ Runs the model on test sets."""
@@ -263,6 +266,6 @@ class PhysFormerTrainer(BaseTrainer):
         print('Saved Model Path: ', model_path)
 
     # HR calculation based on ground truth label
-    def get_hr(self, y, sr=30, min=30, max=180):
+    def get_hr(self, y, sr=30, min=40, max=180):
         p, q = welch(y, sr, nfft=1e5/sr, nperseg=np.min((len(y)-1, 256)))
         return p[(p>min/60)&(p<max/60)][np.argmax(q[(p>min/60)&(p<max/60)])]*60

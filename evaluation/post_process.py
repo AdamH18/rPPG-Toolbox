@@ -108,8 +108,8 @@ def calculate_metric_per_video(predictions, labels, fs=30, diff_flag=True, use_b
         # bandpass filter between [0.75, 2.5] Hz
         # equals [45, 150] beats per min
         [b, a] = butter(1, [0.75 / fs * 2, 2.5 / fs * 2], btype='bandpass')
-        predictions = scipy.signal.filtfilt(b, a, np.double(predictions))
-        labels = scipy.signal.filtfilt(b, a, np.double(labels))
+        #predictions = scipy.signal.filtfilt(b, a, np.double(predictions))
+        #labels = scipy.signal.filtfilt(b, a, np.double(labels))
     if hr_method == 'FFT':
         hr_pred = _calculate_fft_hr(predictions, fs=fs)
         hr_label = _calculate_fft_hr(labels, fs=fs)

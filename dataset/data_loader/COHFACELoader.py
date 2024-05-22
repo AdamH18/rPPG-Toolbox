@@ -10,6 +10,7 @@ import os
 import re
 
 import cv2
+import pandas as pd
 import h5py
 import numpy as np
 from dataset.data_loader.BaseLoader import BaseLoader
@@ -46,6 +47,7 @@ class COHFACELoader(BaseLoader):
                 name(str): name of the dataloader.
                 config_data(CfgNode): data settings(ref:config.py).
         """
+        self.lighting = config_data.INFO.LIGHT
         super().__init__(name, data_path, config_data, sec_pre, model)
 
     def get_raw_data(self, data_path):
@@ -117,6 +119,31 @@ class COHFACELoader(BaseLoader):
 
         input_name_list = self.pose_lum_save_multi_process(data_clips, data_dirs[i]["index"])
         file_list_dict[i] = input_name_list
+    
+    def load_preprocessed_data(self):
+        """ Loads the preprocessed data listed in the file list.
+
+        Args:
+            None
+        Returns:
+            None
+        """
+        file_list_path = self.file_list_path  # get list of files in
+        file_list_df = pd.read_csv(file_list_path)
+        inputs_temp = file_list_df['input_files'].tolist()
+        inputs = []
+        for each_input in inputs_temp:
+            info = each_input.split(os.sep)[-1].split('_')
+            light = int(info[0][-2:])
+            if (light > 1 and 2 in self.lighting) or (light < 2 and 1 in self.lighting) or (len(self.lighting) == 1 and self.lighting[0] == ''):
+                inputs.append(each_input)
+        if not inputs:
+            raise ValueError(self.dataset_name + ' dataset loading data error!')
+        inputs = sorted(inputs)  # sort input file name list
+        labels = [input_file.replace("input", "label") for input_file in inputs]
+        self.inputs = inputs
+        self.labels = labels
+        self.preprocessed_data_len = len(inputs)
 
     @staticmethod
     def read_video(video_file):

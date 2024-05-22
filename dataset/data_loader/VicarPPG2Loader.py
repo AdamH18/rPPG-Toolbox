@@ -7,6 +7,7 @@ import csv
 import copy
 import h5py
 import numpy as np
+import pandas as pd
 from dataset.data_loader.BaseLoader import BaseLoader
 
 
@@ -35,6 +36,7 @@ class VicarPPG2Loader(BaseLoader):
                 name(str): name of the dataloader.
                 config_data(CfgNode): data settings(ref:config.py).
         """
+        self.motion = config_data.INFO.MOTION
         super().__init__(name, data_path, config_data, sec_pre, model)
 
     def get_raw_data(self, data_path):
@@ -164,6 +166,31 @@ class VicarPPG2Loader(BaseLoader):
             data_clips = np.array([data])
         input_name_list = self.pose_lum_save_multi_process(data_clips, data_dirs[i]["index"])
         file_list_dict[i] = input_name_list
+    
+    def load_preprocessed_data(self):
+        """ Loads the preprocessed data listed in the file list.
+
+        Args:
+            None
+        Returns:
+            None
+        """
+        file_list_path = self.file_list_path  # get list of files in
+        file_list_df = pd.read_csv(file_list_path)
+        inputs_temp = file_list_df['input_files'].tolist()
+        inputs = []
+        for each_input in inputs_temp:
+            info = each_input.split(os.sep)[-1].split('_')
+            mov = info[0][3:]
+            if (mov == "mov" and 2 in self.motion) or (mov != "mov" and 1 in self.motion) or (len(self.motion) == 1 and self.motion[0] == ''):
+                inputs.append(each_input)
+        if not inputs:
+            raise ValueError(self.dataset_name + ' dataset loading data error!')
+        inputs = sorted(inputs)  # sort input file name list
+        labels = [input_file.replace("input", "label") for input_file in inputs]
+        self.inputs = inputs
+        self.labels = labels
+        self.preprocessed_data_len = len(inputs)
     
     @staticmethod
     def read_video_frames(video_file):

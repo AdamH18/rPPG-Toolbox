@@ -268,6 +268,6 @@ class PhysFormerPPTrainer(BaseTrainer):
         print('Saved Model Path: ', model_path)
 
     # HR calculation based on ground truth label
-    def get_hr(self, y, sr=30, min=30, max=180):
+    def get_hr(self, y, sr=30, min=40, max=180):
         p, q = welch(y, sr, nfft=1e5/sr, nperseg=np.min((len(y)-1, 256)))
         return p[(p>min/60)&(p<max/60)][np.argmax(q[(p>min/60)&(p<max/60)])]*60

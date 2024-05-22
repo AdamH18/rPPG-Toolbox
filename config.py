@@ -301,6 +301,11 @@ _C.MODEL.SECONDARY_PREPROCESS = False
 _C.MODEL.PHYSNET = CN()
 _C.MODEL.PHYSNET.FRAME_NUM = 64
 
+# Movement model stuff
+_C.MODEL.MOVEMENT_BASE = ''
+_C.MODEL.MOVEMENT_BASE_LOC = ''
+_C.MODEL.MOVEMENT_VER = 0
+
 # -----------------------------------------------------------------------------
 # Model Settings for TS-CAN
 # -----------------------------------------------------------------------------
